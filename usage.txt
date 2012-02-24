@@ -1,0 +1,12 @@
+To run
+First, you need to run the RunGroupServer.class:
+java RunGroupServer
+
+Second, you need to run the RunFileServer.class:
+java RunFileServer
+
+Then, you can run either the command-based client:
+java RunGroupClient
+
+or you can run the GUI Client:
+java GUIClient

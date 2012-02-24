@@ -1,0 +1,4 @@
+To compile, compile .java file using java compiler into .class file at once.
+
+For example:
+javac *.java
