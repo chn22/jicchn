@@ -13,7 +13,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 			Envelope message = null, response = null;
 		 		 	
 			//Tell the server to return the public key.
-			message = new Envelope("GPUBLIC");
+			message = new Envelope("GSPUBLIC");
 			output.writeObject(message);
 			//Get the response from the server
 			response = (Envelope)input.readObject();

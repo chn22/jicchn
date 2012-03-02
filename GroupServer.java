@@ -94,7 +94,7 @@ public class GroupServer extends Server {
 		}catch(FileNotFoundException e)
 		{
 			//create a GroupList File and a groupList
-			System.out.println("GroupList File Does Not Exist. GroupList created.");
+			System.out.println("New GroupList created.");
 			groupList = new GroupList();
 			groupList.addGroup("admin");
 			groupList.addMember("admin", username);
@@ -109,6 +109,7 @@ public class GroupServer extends Server {
 			System.out.println("Error reading from UserList file");
 			System.exit(-1);
 		}
+		System.out.printf("%s up and running\n", this.getClass().getName());
 		//Autosave Daemon. Saves lists every 5 minutes
 		AutoSave aSave = new AutoSave(this);
 		aSave.setDaemon(true);
