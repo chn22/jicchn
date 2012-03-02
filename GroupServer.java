@@ -23,10 +23,20 @@ public class GroupServer extends Server {
     
 	public GroupServer() {
 		super(SERVER_PORT, "ALPHA");
+		try {
+			new GenerateKeyPair("ALPHA");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public GroupServer(int _port) {
 		super(_port, "ALPHA");
+		try {
+			new GenerateKeyPair("ALPHA");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public void start() {
