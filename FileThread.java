@@ -5,11 +5,17 @@ import java.net.Socket;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 
 public class FileThread extends Thread
 {
@@ -287,5 +293,52 @@ public class FileThread extends Thread
 			System.out.println(e);
 		}
 		return hashed;
+	}
+	
+	private static Envelope AESEncrypt(byte[] bytes, SecretKey key){
+		Envelope envelope = new Envelope("IV, Encryption");
+		try{
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
+			cipher.init(Cipher.ENCRYPT_MODE, key);
+			envelope.addObject(cipher.getIV());
+			envelope.addObject(cipher.doFinal(bytes));
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return envelope;
+	}
+	
+	private static byte[] AESDecrypt(Envelope envelope, SecretKey key){
+		byte[] decrypt = null; 
+		byte[] IV = (byte[]) envelope.getObjContents().get(0);
+		byte[] encrypted = (byte[]) envelope.getObjContents().get(1);
+		try{
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
+			cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(IV));
+			decrypt = cipher.doFinal(encrypted);
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return decrypt;
+	}
+	
+	private static byte[] getBytes(Envelope e) throws java.io.IOException{
+	      ByteArrayOutputStream bos = new ByteArrayOutputStream(); 
+	      ObjectOutputStream oos = new ObjectOutputStream(bos); 
+	      oos.writeObject(e);
+	      oos.flush(); 
+	      oos.close(); 
+	      bos.close();
+	      byte [] data = bos.toByteArray();
+	      return data;
+	  }
+	
+	private static Envelope getEnvelope(byte[] bytes) throws java.io.IOException, ClassNotFoundException{
+		ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+		ObjectInputStream ois = new ObjectInputStream(bis);
+		Envelope e= (Envelope) ois.readObject();
+		ois.close();
+		bis.close();
+		return e;
 	}
 }
