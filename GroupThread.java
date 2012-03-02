@@ -283,7 +283,8 @@ public class GroupThread extends Thread
 		if(my_gs.userList.checkUser(username))
 		{
 			//Issue a new token with server's name, user's name, and user's groups
-			UserToken yourToken = new Token(my_gs.name, username, my_gs.userList.getUserGroups(username));
+			Date timestamp = new Date();
+			UserToken yourToken = new Token(my_gs.name, username, my_gs.userList.getUserGroups(username), timestamp);
 			return yourToken;
 		}
 		else
@@ -375,7 +376,8 @@ public class GroupThread extends Thread
 					for(int index = 0; index < deleteOwnedGroup.size(); index++)
 					{
 						//Use the delete group method. Token must be created for this action
-						deleteGroup(deleteOwnedGroup.get(index), new Token(my_gs.name, username, deleteOwnedGroup));
+						Date timestamp = new Date();
+						deleteGroup(deleteOwnedGroup.get(index), new Token(my_gs.name, username, deleteOwnedGroup, timestamp));
 					}
 					
 					//Delete the user from the user list
