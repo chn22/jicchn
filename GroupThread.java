@@ -5,12 +5,14 @@ import java.lang.Thread;
 import java.net.Socket;
 import java.io.*;
 import java.security.MessageDigest;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.*;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class GroupThread extends Thread 
 {
@@ -647,11 +649,61 @@ public class GroupThread extends Thread
 		return hashed;
 	}
 	
-	private Envelope AESEncrypt(byte[] bytes, SecretKey key){
-		Envelope envelope = new Envelope("IV, Encryption");
+	public byte[] RSAEncrypt(byte[] bytes, PrivateKey key){
+		byte[] encrypted = null;
 		try{
-			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
+			Cipher cipher = Cipher.getInstance("RSA/NONE/OAEPWithSHA1AndMGF1Padding", "BC");
 			cipher.init(Cipher.ENCRYPT_MODE, key);
+			encrypted = cipher.doFinal(bytes);
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return encrypted;
+	}
+	
+	public byte[] RSAEncrypt(byte[] bytes, PublicKey key){
+		byte[] encrypted = null;
+		try{
+			Cipher cipher = Cipher.getInstance("RSA/NONE/OAEPWithSHA1AndMGF1Padding", "BC");
+			cipher.init(Cipher.ENCRYPT_MODE, key);
+			encrypted = cipher.doFinal(bytes);
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return encrypted;
+	}
+	
+	public byte[] RSADecrypt(byte[] bytes, PrivateKey key){
+		byte[] decrypt = null; 
+		try{
+			Cipher cipher = Cipher.getInstance("RSA/NONE/OAEPWithSHA1AndMGF1Padding", "BC");
+			cipher.init(Cipher.DECRYPT_MODE, key);
+			decrypt = cipher.doFinal(bytes);
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return decrypt;
+	}
+	
+	public byte[] RSADecrypt(byte[] bytes, PublicKey key){
+		byte[] decrypt = null; 
+		try{
+			Cipher cipher = Cipher.getInstance("RSA/NONE/OAEPWithSHA1AndMGF1Padding", "BC");
+			cipher.init(Cipher.DECRYPT_MODE, key);
+			decrypt = cipher.doFinal(bytes);
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return decrypt;
+	}
+	
+	private Envelope AESEncrypt(Envelope en, byte[] key){
+		Envelope envelope = new Envelope("IV, Encryption");
+		SecretKeySpec skeyspec = new SecretKeySpec(key, "AES");
+		try{
+			byte[] bytes = getBytes(en);
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
+			cipher.init(Cipher.ENCRYPT_MODE, skeyspec);
 			envelope.addObject(cipher.getIV());
 			envelope.addObject(cipher.doFinal(bytes));
 		} catch(Exception e){
@@ -660,18 +712,21 @@ public class GroupThread extends Thread
 		return envelope;
 	}
 	
-	private byte[] AESDecrypt(Envelope envelope, SecretKey key){
+	private Envelope AESDecrypt(Envelope envelope, byte[] key){
+		Envelope en = null;
 		byte[] decrypt = null; 
 		byte[] IV = (byte[]) envelope.getObjContents().get(0);
 		byte[] encrypted = (byte[]) envelope.getObjContents().get(1);
+		SecretKeySpec skeyspec = new SecretKeySpec(key, "AES");
 		try{
 			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
-			cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(IV));
+			cipher.init(Cipher.DECRYPT_MODE, skeyspec, new IvParameterSpec(IV));
 			decrypt = cipher.doFinal(encrypted);
+			en = getEnvelope(decrypt);
 		} catch(Exception e){
 			System.out.println(e);
 		}
-		return decrypt;
+		return en;
 	}
 	
 	private byte[] getBytes(Envelope e) throws java.io.IOException{
