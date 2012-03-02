@@ -14,20 +14,20 @@ public class FileServer extends Server {
 	
 	public static final int SERVER_PORT = 4321;
 	public static FileList fileList;
-	
+	public static String serverName = "FilePile";
 	public FileServer() {
-		super(SERVER_PORT, "FilePile");
+		super(SERVER_PORT, serverName);
 		try {
-			new GenerateKeyPair("FilePile");
+			new GenerateKeyPair(serverName);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
 	public FileServer(int _port) {
-		super(_port, "FilePile");
+		super(_port, serverName);
 		try {
-			new GenerateKeyPair("FilePile");
+			new GenerateKeyPair(serverName);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

@@ -3,6 +3,14 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.security.MessageDigest;
+import java.security.PublicKey;
+import java.security.Security;
+import java.util.List;
+import java.util.Scanner;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.security.PrivateKey;
@@ -21,6 +29,8 @@ public class RunGroupClient{
 	static String fileServerAddress = "";
 	static int groupServerPort = 8765;
 	static int fileServerPort = 4321;
+	static PublicKey groupServerKey = null;
+	static PublicKey fileServerKey = null;
 	
 	public static byte[] RSAEncrypt(byte[] bytes, PrivateKey key){
 		byte[] encrypted = null;
@@ -161,7 +171,7 @@ public class RunGroupClient{
 		
 		//loop to wait for command
 		do{
-			token = groupClient.getToken(usert);
+			//token = groupClient.getToken(usert);
 			try{
 				System.out.println("Enter command, or type \"DISCONNECT\" to disconnect from groupserver.");
 				System.out.print(" > ");	
@@ -170,6 +180,39 @@ public class RunGroupClient{
 			catch(Exception e){
 			   System.err.println(e);
 			}
+			if(input.toUpperCase().equals("GSPUBLIC")){
+				PublicKey publicKey = groupClient.getPublicKey();
+				groupServerKey = publicKey;
+				if(publicKey != null){
+					byte[] pKey = publicKey.getEncoded();
+					try{
+						Security.addProvider(new BouncyCastleProvider());
+						MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
+						byte[] fingerPrint = md.digest(pKey);
+						System.out.println("The server's rsa key fingerprint is :\n");
+						//convert hashed public key into hexadecimal
+						StringBuffer strbuf = new StringBuffer(fingerPrint.length * 2);
+					    int i;
+					    for (i = 0; i < fingerPrint.length; i++) {
+					    	if (((int) fingerPrint[i] & 0xff) < 0x10)
+					    		strbuf.append("0");
+					    	strbuf.append(Long.toString((int) fingerPrint[i] & 0xff, 16));
+					    }
+						System.out.println(strbuf);
+						System.out.println("Enter 'yes' to continue or 'no' to disconnect > ");
+						input = in.readLine();
+						if(!input.toLowerCase().equals("yes") && !input.toLowerCase().equals("y")){
+							input = "DISCONNECT";
+						}
+					} catch(Exception e){
+						System.out.println(e);
+					}
+				}
+				else{
+					System.out.println("Error in obtain server's key fingerprint");
+				}
+			}
+			
 			if(input.toUpperCase().equals("CUSER")){
 				System.out.println("Enter the username to create");
 				System.out.print(" > ");	
@@ -333,6 +376,42 @@ public class RunGroupClient{
 					System.out.println("Successfully disconnected from File Server");
 				}
 			}
+			
+			else if(input.toUpperCase().equals("FSPUBLIC")){
+				PublicKey publicKey = fileClient.getPublicKey();
+				fileServerKey = publicKey;
+				if(publicKey != null){
+					byte[] pKey = publicKey.getEncoded();
+					try{
+						Security.addProvider(new BouncyCastleProvider());
+						MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
+						byte[] fingerPrint = md.digest(pKey);
+						System.out.println("The server's rsa key fingerprint is :\n");
+						//convert hashed public key into hexadecimal
+						StringBuffer strbuf = new StringBuffer(fingerPrint.length * 2);
+					    int i;
+					    for (i = 0; i < fingerPrint.length; i++) {
+					    	if (((int) fingerPrint[i] & 0xff) < 0x10)
+					    		strbuf.append("0");
+					    	strbuf.append(Long.toString((int) fingerPrint[i] & 0xff, 16));
+					    }
+						System.out.println(strbuf);
+						System.out.println("Enter 'yes' to continue or 'no' to disconnect > ");
+						input = in.readLine();
+						if(!input.toLowerCase().equals("yes") && !input.toLowerCase().equals("y")){
+							fileClient.disconnect();
+							FSConnected = false;
+							System.out.println("Successfully disconnected from File Server");
+						}
+					} catch(Exception e){
+						System.out.println(e);
+					}
+				}
+				else{
+					System.out.println("Error in obtain server's key fingerprint");
+				}
+			}
+			
 			else if(input.toUpperCase().equals("LISTFILES"))
 			{
 				if(!FSConnected)
@@ -448,6 +527,6 @@ public class RunGroupClient{
 			
 			
 		}while(!input.toUpperCase().equals("DISCONNECT"));
-		
+		System.out.println("Successfully disconnect.");
 	}
 }

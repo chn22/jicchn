@@ -43,7 +43,21 @@ public class GroupThread extends Thread
 				System.out.println("Request received: " + message.getMessage());
 				Envelope response;
 				
-				if(message.getMessage().equals("GET"))//Client wants a token
+				if(message.getMessage().equals("GSPUBLIC"))//Client requests server's public key
+				{
+					try{
+						ObjectInputStream inStream;
+						inStream = new ObjectInputStream(new FileInputStream(my_gs.serverName + ".public"));
+						PublicKey publicKey = (PublicKey)inStream.readObject();
+						response = new Envelope("OK");
+						response.addObject(publicKey);
+						output.writeObject(response);
+					}catch(Exception e){
+						System.err.println(e);
+					}
+					
+				}
+				else if(message.getMessage().equals("GET"))//Client wants a token
 				{
 					String username = (String)message.getObjContents().get(0); //Get the username
 					if(username == null)

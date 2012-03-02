@@ -20,20 +20,21 @@ public class GroupServer extends Server {
 	public static final int SERVER_PORT = 8765;
 	public UserList userList;
 	public GroupList groupList;
+    public static String serverName = "ALPHA";
     
 	public GroupServer() {
-		super(SERVER_PORT, "ALPHA");
+		super(SERVER_PORT, serverName);
 		try {
-			new GenerateKeyPair("ALPHA");
+			new GenerateKeyPair(serverName);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
 	public GroupServer(int _port) {
-		super(_port, "ALPHA");
+		super(_port, serverName);
 		try {
-			new GenerateKeyPair("ALPHA");
+			new GenerateKeyPair(serverName);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -93,7 +94,7 @@ public class GroupServer extends Server {
 		}catch(FileNotFoundException e)
 		{
 			//create a GroupList File and a groupList
-			System.out.println("GroupList File Does Not Exist. GroupList created.");
+			System.out.println("New GroupList created.");
 			groupList = new GroupList();
 			groupList.addGroup("admin");
 			groupList.addMember("admin", username);
@@ -108,6 +109,7 @@ public class GroupServer extends Server {
 			System.out.println("Error reading from UserList file");
 			System.exit(-1);
 		}
+		System.out.printf("%s up and running\n", this.getClass().getName());
 		//Autosave Daemon. Saves lists every 5 minutes
 		AutoSave aSave = new AutoSave(this);
 		aSave.setDaemon(true);

@@ -43,7 +43,21 @@ public class FileThread extends Thread
 			{
 				Envelope e = (Envelope)input.readObject();
 				System.out.println("Request received: " + e.getMessage());
-
+				
+				if(e.getMessage().equals("FSPUBLIC"))//Client requests server's public key
+				{
+					try{
+						ObjectInputStream inStream;
+						inStream = new ObjectInputStream(new FileInputStream(FileServer.serverName + ".public"));
+						PublicKey publicKey = (PublicKey)inStream.readObject();
+						response = new Envelope("OK");
+						response.addObject(publicKey);
+						output.writeObject(response);
+					}catch(Exception ex){
+						System.err.println(ex);
+					}
+				}
+				
 				// Handler to list files that this user is allowed to see
 				if(e.getMessage().equals("LFILES"))
 				{

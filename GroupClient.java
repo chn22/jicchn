@@ -1,10 +1,49 @@
 /* Implements the GroupClient Interface */
 
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 
 public class GroupClient extends Client implements GroupClientInterface {
  
+	public PublicKey getPublicKey(){
+		try
+		{
+			PublicKey publicKey = null;
+			Envelope message = null, response = null;
+		 		 	
+			//Tell the server to return the public key.
+			message = new Envelope("GSPUBLIC");
+			output.writeObject(message);
+			//Get the response from the server
+			response = (Envelope)input.readObject();
+			
+			//Successful response
+			if(response.getMessage().equals("OK"))
+				
+			{
+				
+				//If there is a token in the Envelope, return it 
+				ArrayList<Object> temp = null;
+				temp = response.getObjContents();
+				
+				if(temp.size() == 1)
+				{
+					publicKey = (PublicKey)temp.get(0);
+					if(publicKey != null)
+					return publicKey;
+				}
+			}
+			return null;
+		}
+		catch(Exception e)
+		{
+			System.err.println("Error: " + e.getMessage());
+			e.printStackTrace(System.err);
+			return null;
+		}
+	}
+	
 	 public UserToken getToken(String username)
 	 {
 		try
