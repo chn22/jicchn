@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 
@@ -7,10 +8,11 @@ public class Token implements UserToken,java.io.Serializable{
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	String serverName, username, timestamp;
+	String serverName, username;
+	Date timestamp;
 	ArrayList<String> userGroups = new ArrayList<String>();
 	
-	public Token(String serverName, String username, ArrayList<String> userGroups, String timestamp){
+	public Token(String serverName, String username, ArrayList<String> userGroups, Date timestamp){
 		// TODO complete here
 		this.serverName = serverName;
 		this.username = username;
@@ -37,13 +39,13 @@ public class Token implements UserToken,java.io.Serializable{
 		return userGroups;
 	}
 	
-	public String getTimestamp(){
+	public Date getTimestamp(){
 		return timestamp;
 	}
 	
 	//get the combined string of all token data
 	public String getTokendata(){
-		return serverName + username + timestamp + userGroups.toString();
+		return serverName + username + timestamp.toString() + userGroups.toString();
 	}
 	
 	//sort the arraylist
