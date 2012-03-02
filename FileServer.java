@@ -17,10 +17,20 @@ public class FileServer extends Server {
 	
 	public FileServer() {
 		super(SERVER_PORT, "FilePile");
+		try {
+			new GenerateKeyPair("FilePile");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	public FileServer(int _port) {
 		super(_port, "FilePile");
+		try {
+			new GenerateKeyPair("FilePile");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public void start() {
