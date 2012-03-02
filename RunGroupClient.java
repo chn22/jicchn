@@ -2,20 +2,35 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
+import java.util.Scanner;
 
 
 public class RunGroupClient{
 	
-	
+	static String groupServerAddress = "";
+	static String fileServerAddress = "";
+	static int groupServerPort = 8765;
+	static int fileServerPort = 4321;
 	
 	public static void main(String args[]){
+		
+		System.out.println("Please enter group server address > ");
+		Scanner scan = new Scanner(System.in);
+		groupServerAddress = scan.next();
+		System.out.println("Please enter group server port > ");
+		try{
+			groupServerPort = scan.nextInt();
+		}catch(Exception e){
+			groupServerPort = 8765;
+		}
+		
 		GroupClient groupClient = new GroupClient();
 		FileClient fileClient = new FileClient();
 		String input = null;
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		UserToken token = null;
 		//connect to the group server
-		groupClient.connect("localhost",8765);
+		groupClient.connect(groupServerAddress,groupServerPort);
 		boolean FSConnected = false;
 		String usert = "";
 		
@@ -177,7 +192,15 @@ public class RunGroupClient{
 			{
 				if(!FSConnected)
 				{
-					fileClient.connect("localhost",4321);
+					System.out.println("Please enter file server address > ");
+					fileServerAddress = scan.next();
+					System.out.println("Please enter file server port > ");
+					try{
+						fileServerPort = scan.nextInt();
+					}catch(Exception e){
+						fileServerPort = 4321;
+					}
+					fileClient.connect(fileServerAddress,fileServerPort);
 					FSConnected = true;
 					System.out.println("Connected to File Server Successfully");
 				}
