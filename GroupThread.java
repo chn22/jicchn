@@ -8,6 +8,10 @@ import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.util.*;
 
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+
 public class GroupThread extends Thread 
 {
 	private final Socket socket;
@@ -641,5 +645,52 @@ public class GroupThread extends Thread
 			System.out.println(e);
 		}
 		return hashed;
+	}
+	
+	private Envelope AESEncrypt(byte[] bytes, SecretKey key){
+		Envelope envelope = new Envelope("IV, Encryption");
+		try{
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
+			cipher.init(Cipher.ENCRYPT_MODE, key);
+			envelope.addObject(cipher.getIV());
+			envelope.addObject(cipher.doFinal(bytes));
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return envelope;
+	}
+	
+	private byte[] AESDecrypt(Envelope envelope, SecretKey key){
+		byte[] decrypt = null; 
+		byte[] IV = (byte[]) envelope.getObjContents().get(0);
+		byte[] encrypted = (byte[]) envelope.getObjContents().get(1);
+		try{
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
+			cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(IV));
+			decrypt = cipher.doFinal(encrypted);
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return decrypt;
+	}
+	
+	private byte[] getBytes(Envelope e) throws java.io.IOException{
+	      ByteArrayOutputStream bos = new ByteArrayOutputStream(); 
+	      ObjectOutputStream oos = new ObjectOutputStream(bos); 
+	      oos.writeObject(e);
+	      oos.flush(); 
+	      oos.close(); 
+	      bos.close();
+	      byte [] data = bos.toByteArray();
+	      return data;
+	  }
+	
+	private Envelope getEnvelope(byte[] bytes) throws java.io.IOException, ClassNotFoundException{
+		ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+		ObjectInputStream ois = new ObjectInputStream(bis);
+		Envelope e= (Envelope) ois.readObject();
+		ois.close();
+		bis.close();
+		return e;
 	}
 }
