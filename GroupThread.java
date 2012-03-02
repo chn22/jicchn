@@ -4,6 +4,7 @@
 import java.lang.Thread;
 import java.net.Socket;
 import java.io.*;
+import java.security.MessageDigest;
 import java.util.*;
 
 public class GroupThread extends Thread 
@@ -614,5 +615,16 @@ public class GroupThread extends Thread
 			System.out.println("Requester does not exist!-----------------");
 			return false;
 		}
+	}
+	
+	private byte[] getHash(String s){
+		byte[] hashed = null;
+		try{
+			MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
+			hashed = md.digest(s.getBytes());
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return hashed;
 	}
 }

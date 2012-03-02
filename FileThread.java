@@ -2,6 +2,7 @@
 
 import java.lang.Thread;
 import java.net.Socket;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.io.File;
@@ -277,4 +278,14 @@ public class FileThread extends Thread
 		}
 	}
 
+	private byte[] getHash(String s){
+		byte[] hashed = null;
+		try{
+			MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
+			hashed = md.digest(s.getBytes());
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return hashed;
+	}
 }
