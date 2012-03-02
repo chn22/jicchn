@@ -295,7 +295,7 @@ public class FileThread extends Thread
 		return hashed;
 	}
 	
-	private static Envelope AESEncrypt(byte[] bytes, SecretKey key){
+	private Envelope AESEncrypt(byte[] bytes, SecretKey key){
 		Envelope envelope = new Envelope("IV, Encryption");
 		try{
 			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
@@ -308,7 +308,7 @@ public class FileThread extends Thread
 		return envelope;
 	}
 	
-	private static byte[] AESDecrypt(Envelope envelope, SecretKey key){
+	private byte[] AESDecrypt(Envelope envelope, SecretKey key){
 		byte[] decrypt = null; 
 		byte[] IV = (byte[]) envelope.getObjContents().get(0);
 		byte[] encrypted = (byte[]) envelope.getObjContents().get(1);
@@ -322,7 +322,7 @@ public class FileThread extends Thread
 		return decrypt;
 	}
 	
-	private static byte[] getBytes(Envelope e) throws java.io.IOException{
+	private byte[] getBytes(Envelope e) throws java.io.IOException{
 	      ByteArrayOutputStream bos = new ByteArrayOutputStream(); 
 	      ObjectOutputStream oos = new ObjectOutputStream(bos); 
 	      oos.writeObject(e);
@@ -333,7 +333,7 @@ public class FileThread extends Thread
 	      return data;
 	  }
 	
-	private static Envelope getEnvelope(byte[] bytes) throws java.io.IOException, ClassNotFoundException{
+	private Envelope getEnvelope(byte[] bytes) throws java.io.IOException, ClassNotFoundException{
 		ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
 		ObjectInputStream ois = new ObjectInputStream(bis);
 		Envelope e= (Envelope) ois.readObject();
