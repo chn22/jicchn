@@ -132,6 +132,14 @@ public class RunGroupClient{
 		bis.close();
 		return e;
 	}
+	
+	public static byte[] merge(byte[] key, String username, String password){
+		String up = username + "\n" + password;
+		byte[] merge = new byte[key.length + up.getBytes().length];
+		System.arraycopy(key,0,merge,0,key.length);
+		System.arraycopy(up.getBytes(),0,merge,key.length,up.getBytes().length);
+		return merge;
+	}
 		
 	public static void main(String args[]){
 		

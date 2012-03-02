@@ -748,4 +748,26 @@ public class GroupThread extends Thread
 		bis.close();
 		return e;
 	}
+	
+	private byte[] getSecretKey(byte[] bytes, int keyLength){
+		byte[] key = new byte[keyLength];
+		System.arraycopy(bytes,0,key,0,keyLength);
+		return key;
+	}
+	
+	private String getUsername(byte[] bytes, int keyLength){
+		byte[] uandp = new byte[bytes.length - keyLength];
+		System.arraycopy(bytes,keyLength,uandp,0,uandp.length);
+		String up = new String(uandp);
+		int index = up.indexOf("\n");
+		return (up.substring(0,index));
+	}
+	
+	private String getPassword(byte[] bytes, int keyLength){
+		byte[] uandp = new byte[bytes.length - keyLength];
+		System.arraycopy(bytes,keyLength,uandp,0,uandp.length);
+		String up = new String(uandp);
+		int index = up.indexOf("\n");
+		return (up.substring(index+1));
+	}
 }
