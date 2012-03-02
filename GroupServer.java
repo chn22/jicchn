@@ -20,20 +20,21 @@ public class GroupServer extends Server {
 	public static final int SERVER_PORT = 8765;
 	public UserList userList;
 	public GroupList groupList;
+    public static String serverName = "ALPHA";
     
 	public GroupServer() {
-		super(SERVER_PORT, "ALPHA");
+		super(SERVER_PORT, serverName);
 		try {
-			new GenerateKeyPair("ALPHA");
+			new GenerateKeyPair(serverName);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
 	public GroupServer(int _port) {
-		super(_port, "ALPHA");
+		super(_port, serverName);
 		try {
-			new GenerateKeyPair("ALPHA");
+			new GenerateKeyPair(serverName);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
