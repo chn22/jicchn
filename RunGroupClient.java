@@ -425,6 +425,39 @@ public class RunGroupClient{
 					if(fileClient.connect(fileServerAddress,fileServerPort)){
 						FSConnected = true;
 						System.out.println("Connected to File Server Successfully");
+						
+						//get public key
+						PublicKey publicKey = fileClient.getPublicKey();
+						fileServerKey = publicKey;
+						if(publicKey != null){
+							byte[] pKey = publicKey.getEncoded();
+							try{
+								MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
+								byte[] fingerPrint = md.digest(pKey);
+								System.out.println("The server's rsa key fingerprint is :\n");
+								//convert hashed public key into hexadecimal
+								StringBuffer strbuf = new StringBuffer(fingerPrint.length * 2);
+							    int i;
+							    for (i = 0; i < fingerPrint.length; i++) {
+							    	if (((int) fingerPrint[i] & 0xff) < 0x10)
+							    		strbuf.append("0");
+							    	strbuf.append(Long.toString((int) fingerPrint[i] & 0xff, 16));
+							    }
+								System.out.println(strbuf);
+								System.out.println("Enter 'yes' to continue or 'no' to disconnect > ");
+								input = in.readLine();
+								if(!input.toLowerCase().equals("yes") && !input.toLowerCase().equals("y")){
+									fileClient.disconnect();
+									FSConnected = false;
+									System.out.println("Successfully disconnected from File Server");
+								}
+							} catch(Exception e){
+								System.out.println(e);
+							}
+						}
+						else{
+							System.out.println("Error in obtain server's key fingerprint");
+						}
 					}
 					else{
 						System.out.println("Connection fail.");
@@ -455,7 +488,6 @@ public class RunGroupClient{
 				if(publicKey != null){
 					byte[] pKey = publicKey.getEncoded();
 					try{
-						//Security.addProvider(new BouncyCastleProvider());
 						MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
 						byte[] fingerPrint = md.digest(pKey);
 						System.out.println("The server's rsa key fingerprint is :\n");
