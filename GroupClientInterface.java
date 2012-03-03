@@ -38,8 +38,7 @@ public interface GroupClientInterface
      *         If this user does not exist, a null value will be returned.
      *
      */
-
-    public UserToken getToken(final byte[] sKey);
+    public UserToken getToken(final String username, final byte[] sKey);
 
 
     /**

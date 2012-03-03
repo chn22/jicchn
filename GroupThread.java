@@ -24,7 +24,6 @@ public class GroupThread extends Thread
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private byte[] sharedKey;
-	private String USERNAME;
 	
 	public GroupThread(Socket _socket, GroupServer _gs)
 	{
@@ -73,7 +72,6 @@ public class GroupThread extends Thread
 				int keySize = (Integer)env.getObjContents().get(1);
 				byte[] key = getSecretKey(credential, keySize);
 				String username = getUsername(credential, keySize);
-				USERNAME = getUsername(credential, keySize);
 				String password = getPassword(credential, keySize);
 				if(keySize == 0 || credential == null)
 				{
@@ -102,7 +100,7 @@ public class GroupThread extends Thread
 				
 				if(message.getMessage().equals("GET"))//Client wants a token
 				{
-					String username = USERNAME; //Get the username
+					String username = (String)message.getObjContents().get(0); //Get the username
 					if(username == null)
 					{
 						response = new Envelope("FAIL");
@@ -112,10 +110,6 @@ public class GroupThread extends Thread
 					else
 					{
 						UserToken yourToken = createToken(username); //Create a token
-						String tokendata = yourToken.getTokendata();
-						byte[] hashed = getHash(tokendata);
-						byte[] signed = RSAEncrypt(hashed, privateKey);
-						yourToken.setSignature(signed);
 						
 						//Respond to the client. On error, the client will receive a null token
 						response = new Envelope("OK");
@@ -146,6 +140,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("DUSER")) //Client wants to delete a user
@@ -173,7 +168,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
-					
+					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("CGROUP")) //Client wants to create a group
@@ -201,7 +196,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
-					
+					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 					
 				}
@@ -230,7 +225,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
-					
+					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("LMEMBERS")) //Client wants a list of members in a group
@@ -259,7 +254,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
-					
+					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("AUSERTOGROUP")) //Client wants to add user to a group
@@ -289,7 +284,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
-					
+					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("RUSERFROMGROUP")) //Client wants to remove user from a group
@@ -319,7 +314,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
-					
+					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("DISCONNECT")) //Client wants to disconnect
@@ -330,6 +325,7 @@ public class GroupThread extends Thread
 				else
 				{
 					response = new Envelope("FAIL"); //Server does not understand client request
+					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
 			}while(proceed);	
