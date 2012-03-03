@@ -246,7 +246,7 @@ public class RunGroupClient{
 		
 		//loop to wait for command
 		do{
-			//token = groupClient.getToken();
+			//token = groupClient.getToken(usert);
 			try{
 				System.out.println("Enter command, or type \"DISCONNECT\" to disconnect from groupserver.");
 				System.out.print(" > ");	
