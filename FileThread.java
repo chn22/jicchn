@@ -5,6 +5,7 @@ import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.List;
 import java.io.ByteArrayInputStream;
@@ -20,10 +21,15 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 public class FileThread extends Thread
 {
 	private final Socket socket;
-
+	private PublicKey publicKey;
+	private PrivateKey privateKey;
+	private byte[] sharedKey;
+	
 	public FileThread(Socket _socket)
 	{
 		socket = _socket;
@@ -38,6 +44,17 @@ public class FileThread extends Thread
 			final ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
 			final ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
 			Envelope response;
+			
+			Security.addProvider(new BouncyCastleProvider());
+			
+			//load public and private key pair
+			ObjectInputStream inStream;
+			inStream = new ObjectInputStream(new FileInputStream("FilePile" + ".public"));
+			publicKey = (PublicKey)inStream.readObject();
+			inStream.close();
+			inStream = new ObjectInputStream(new FileInputStream("FilePile" + ".private"));
+			privateKey = (PrivateKey)inStream.readObject();
+			inStream.close();
 
 			do
 			{
@@ -47,9 +64,6 @@ public class FileThread extends Thread
 				if(e.getMessage().equals("FSPUBLIC"))//Client requests server's public key
 				{
 					try{
-						ObjectInputStream inStream;
-						inStream = new ObjectInputStream(new FileInputStream(FileServer.serverName + ".public"));
-						PublicKey publicKey = (PublicKey)inStream.readObject();
 						response = new Envelope("OK");
 						response.addObject(publicKey);
 						output.writeObject(response);
@@ -58,8 +72,24 @@ public class FileThread extends Thread
 					}
 				}
 				
+				else if(e.getMessage().equals("CHALLENGE"))//Client requests server's public key
+				{
+					try{
+						response = new Envelope("OK");
+						byte[] challenge = (byte[])e.getObjContents().get(0);
+						byte[] deChallenge = RSADecrypt(challenge, privateKey);
+						int keySize = (Integer)e.getObjContents().get(1);
+						byte[] c = new byte[deChallenge.length - keySize];
+						System.arraycopy(deChallenge, keySize, c, 0, c.length);
+						response.addObject(c);
+						output.writeObject(response);
+					}catch(Exception ex){
+						ex.printStackTrace();
+					}
+				}
+				
 				// Handler to list files that this user is allowed to see
-				if(e.getMessage().equals("LFILES"))
+				else if(e.getMessage().equals("LFILES"))
 				{
 				    /* TODO: Write this handler */
 					if(e.getObjContents().size() < 1 || e.getObjContents().get(0) == null)
@@ -85,7 +115,7 @@ public class FileThread extends Thread
 					}
 					output.writeObject(response);
 				}
-				if(e.getMessage().equals("UPLOADF"))
+				else if(e.getMessage().equals("UPLOADF"))
 				{
 
 					if(e.getObjContents().size() < 3)

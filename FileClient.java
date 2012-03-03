@@ -8,6 +8,8 @@ import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.crypto.SecretKey;
+
 public class FileClient extends Client implements FileClientInterface {
 	
 	public PublicKey getPublicKey(){
@@ -46,6 +48,21 @@ public class FileClient extends Client implements FileClientInterface {
 			e.printStackTrace(System.err);
 			return null;
 		}
+	}
+	
+	public byte[] challenge(byte[] challenge, int keySize){
+		Envelope env = new Envelope("CHALLENGE");
+	    env.addObject(challenge);
+	    env.addObject(keySize);
+	    try {
+			output.writeObject(env);
+			Envelope e = (Envelope)input.readObject();
+			byte[] challengeReturn = (byte[])e.getObjContents().get(0);
+			return challengeReturn;
+	    }catch(Exception e){
+	    	e.printStackTrace();
+	    }
+		return null;
 	}
 	
 	public boolean delete(String filename, UserToken token) {

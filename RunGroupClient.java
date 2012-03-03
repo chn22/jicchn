@@ -6,7 +6,9 @@ import java.io.InputStreamReader;
 import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.Security;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.Scanner;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -32,7 +34,17 @@ public class RunGroupClient{
 	static int fileServerPort = 4321;
 	static PublicKey groupServerKey = null;
 	static PublicKey fileServerKey = null;
-	private static SecretKey sKey = null;
+	private static SecretKey gSharedKey = null;
+	private static SecretKey fSharedKey = null;
+	
+	
+	public static final byte[] intToByteArray(int value) {
+	    return new byte[] {
+	            (byte)(value >>> 24),
+	            (byte)(value >>> 16),
+	            (byte)(value >>> 8),
+	            (byte)value};
+	}
 	
 	public static byte[] RSAEncrypt(byte[] bytes, PrivateKey key){
 		byte[] encrypted = null;
@@ -217,8 +229,8 @@ public class RunGroupClient{
 				String password = in.readLine();
 				KeyGenerator kgen = KeyGenerator.getInstance("AES", "BC");
 				kgen.init(128);
-				sKey = kgen.generateKey();
-				byte[] mergedData = merge(sKey.getEncoded(), username, password);
+				gSharedKey = kgen.generateKey();
+				byte[] mergedData = merge(gSharedKey.getEncoded(), username, password);
 				byte[] encryptedLogin = RSAEncrypt(mergedData, groupServerKey);
 				loginSuccess = groupClient.login(encryptedLogin, 128/8);
 				if(loginSuccess){
@@ -249,7 +261,6 @@ public class RunGroupClient{
 				if(publicKey != null){
 					byte[] pKey = publicKey.getEncoded();
 					try{
-						//Security.addProvider(new BouncyCastleProvider());
 						MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
 						byte[] fingerPrint = md.digest(pKey);
 						System.out.println("The server's rsa key fingerprint is :\n");
@@ -265,7 +276,6 @@ public class RunGroupClient{
 						System.out.println("Enter 'yes' to continue or 'no' to disconnect > ");
 						input = in.readLine();
 						if(!input.toLowerCase().equals("yes") && !input.toLowerCase().equals("y")){
-							//input = "DISCONNECT";
 							groupClient.disconnect();
 							break;
 						}
@@ -285,7 +295,6 @@ public class RunGroupClient{
 				try {
 					username = in.readLine().toLowerCase();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				boolean result = groupClient.createUser(username, token);
@@ -303,7 +312,6 @@ public class RunGroupClient{
 				try {
 					username = in.readLine().toLowerCase();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				boolean result = groupClient.deleteUser(username, token);
@@ -318,7 +326,6 @@ public class RunGroupClient{
 				try {
 					groupname = in.readLine().toLowerCase();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				boolean result = groupClient.createGroup(groupname, token);
@@ -333,7 +340,6 @@ public class RunGroupClient{
 				try {
 					groupname = in.readLine().toLowerCase();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				boolean result = groupClient.deleteGroup(groupname, token);
@@ -348,7 +354,6 @@ public class RunGroupClient{
 				try {
 					groupname = in.readLine().toLowerCase();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				List<String> result = groupClient.listMembers(groupname, token);
@@ -372,7 +377,6 @@ public class RunGroupClient{
 					System.out.print(" > ");
 					groupname = in.readLine().toLowerCase();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				boolean result = groupClient.addUserToGroup(username, groupname, token);
@@ -395,7 +399,6 @@ public class RunGroupClient{
 					System.out.print(" > ");
 					groupname = in.readLine().toLowerCase();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				boolean result = groupClient.deleteUserFromGroup(username, groupname, token);
@@ -451,6 +454,32 @@ public class RunGroupClient{
 									FSConnected = false;
 									System.out.println("Successfully disconnected from File Server");
 								}
+								
+								//send challenge to file server
+								KeyGenerator kgen = KeyGenerator.getInstance("AES", "BC");
+								kgen.init(128);
+								fSharedKey = kgen.generateKey();
+								Random r = new Random();
+								int challenge = r.nextInt();
+								byte[] fByte = fSharedKey.getEncoded();
+								byte[] cByte = intToByteArray(challenge);
+								
+								byte[] merge = new byte[cByte.length + fByte.length];
+								System.arraycopy(fByte,0,merge,0,fByte.length);
+								System.arraycopy(cByte,0,merge,fByte.length,cByte.length);
+								
+								byte[] encryptedMerge = RSAEncrypt(merge, fileServerKey);
+								byte[] rChallenge = fileClient.challenge(encryptedMerge, 128/8);
+								
+								if(Arrays.equals(rChallenge, cByte)){
+									System.out.println("File Server challenge success. Connection success.");
+								}
+								else{
+									fileClient.disconnect();
+									FSConnected = false;
+									System.out.println("File Server challenge fail. Connection closed.");
+								}
+								
 							} catch(Exception e){
 								System.out.println(e);
 							}
@@ -553,7 +582,6 @@ public class RunGroupClient{
 						System.out.print(" > ");
 						group = in.readLine().toLowerCase();
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 					boolean result = fileClient.upload(sourceFile, destFile, group, token);
@@ -584,7 +612,6 @@ public class RunGroupClient{
 						System.out.print(" > ");
 						destFile = in.readLine().toLowerCase();
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 					boolean result = fileClient.download(sourceFile, destFile, token);
@@ -611,7 +638,6 @@ public class RunGroupClient{
 						System.out.print(" > ");
 						filename = in.readLine().toLowerCase();
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 					boolean result = fileClient.delete(filename, token);

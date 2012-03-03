@@ -45,7 +45,6 @@ public class GroupThread extends Thread
 			
 			Security.addProvider(new BouncyCastleProvider());
 			
-			
 			//load public and private key pair
 			ObjectInputStream inStream;
 			inStream = new ObjectInputStream(new FileInputStream(my_gs.serverName + ".public"));
