@@ -38,7 +38,8 @@ public interface GroupClientInterface
      *         If this user does not exist, a null value will be returned.
      *
      */
-    public UserToken getToken();
+
+    public UserToken getToken(final byte[] sKey);
 
 
     /**
@@ -51,7 +52,7 @@ public interface GroupClientInterface
      * @return true if the new user was created, false otherwise
      *
      */
-    public boolean createUser(final String username, final UserToken token);
+    public boolean createUser(final String username, final UserToken token, final byte[] sKey);
 
 
     /**
@@ -65,7 +66,7 @@ public interface GroupClientInterface
      * @return true if the user was deleted, false otherwise
      *
      */
-    public boolean deleteUser(final String username, final UserToken token);
+    public boolean deleteUser(final String username, final UserToken token, final byte[] sKey);
 
 
     /**
@@ -78,7 +79,7 @@ public interface GroupClientInterface
      * @return true if the new group was created, false otherwise
      *
      */
-    public boolean createGroup(final String groupname, final UserToken token);
+    public boolean createGroup(final String groupname, final UserToken token, final byte[] sKey);
 
 
     /**
@@ -91,7 +92,7 @@ public interface GroupClientInterface
      * @return true if the group was deleted, false otherwise
      *
      */
-    public boolean deleteGroup(final String groupname, final UserToken token);
+    public boolean deleteGroup(final String groupname, final UserToken token, final byte[] sKey);
 
 
     /**
@@ -105,7 +106,7 @@ public interface GroupClientInterface
      * @return true if the user was added, false otherwise
      *
      */
-    public boolean addUserToGroup(final String user, final String group, final UserToken token);
+    public boolean addUserToGroup(final String user, final String group, final UserToken token, final byte[] sKey);
 
 
     /**
@@ -119,7 +120,7 @@ public interface GroupClientInterface
      * @return true if the user was removed, false otherwise
      *
      */
-    public boolean deleteUserFromGroup(final String user, final String group, final UserToken token);
+    public boolean deleteUserFromGroup(final String user, final String group, final UserToken token, final byte[] sKey);
 
 
 
@@ -135,6 +136,6 @@ public interface GroupClientInterface
      *         a group has no members, while a null return indicates
      *         an error.
      */
-    public List<String> listMembers(final String group, final UserToken token);
+    public List<String> listMembers(final String group, final UserToken token, final byte[] sKey);
 
 }   //-- end interface GroupClientInterface
