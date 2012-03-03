@@ -24,6 +24,7 @@ public class GroupThread extends Thread
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private byte[] sharedKey;
+	private String USERNAME;
 	
 	public GroupThread(Socket _socket, GroupServer _gs)
 	{
@@ -94,7 +95,7 @@ public class GroupThread extends Thread
 				}
 				else if(message.getMessage().equals("GET"))//Client wants a token
 				{
-					String username = (String)message.getObjContents().get(0); //Get the username
+					String username = USERNAME; //Get the username
 					if(username == null)
 					{
 						response = new Envelope("FAIL");

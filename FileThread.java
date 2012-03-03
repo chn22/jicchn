@@ -6,6 +6,8 @@ import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -23,6 +25,7 @@ import javax.crypto.spec.SecretKeySpec;
 public class FileThread extends Thread
 {
 	private final Socket socket;
+	private ArrayList<Date> timestamps = new ArrayList<Date>();
 
 	public FileThread(Socket _socket)
 	{
@@ -410,5 +413,36 @@ public class FileThread extends Thread
 		ois.close();
 		bis.close();
 		return e;
+	}
+	
+	private void clearTimestamps(){
+		Date now = new Date();
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(now);
+		calendar.add(Calendar.MINUTE, -5);
+		Date fiveAgo = calendar.getTime();
+		for(int i = 0; i < timestamps.size(); i++){
+			Date date = timestamps.get(i);
+			if(date.compareTo(fiveAgo) < 0)
+				timestamps.remove(i);
+		}
+	}
+	
+	private boolean checkTimestamp(Date d){
+		Date now = new Date();
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(now);
+		calendar.add(Calendar.MINUTE, -5);
+		Date fiveAgo = calendar.getTime();
+		System.out.println(now);
+		System.out.println(fiveAgo);
+		if(d.compareTo(fiveAgo) < 0)
+			return false;
+		for(Date date : timestamps){
+			if(d.compareTo(date) == 0)
+				return false;
+		}
+		timestamps.add(d);
+		return true;
 	}
 }
