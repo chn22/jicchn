@@ -1,4 +1,5 @@
 
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -47,5 +48,12 @@ public interface UserToken
      *
      */
     public List<String> getGroups();
-
+    
+    public Date getTimestamp();
+    
+    public String getTokendata();
+    
+    public void setSignature(byte[] bytes);
+	
+	public byte[] getSignature();
 }   //-- end interface UserToken

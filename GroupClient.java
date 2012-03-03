@@ -76,7 +76,8 @@ public class GroupClient extends Client implements GroupClientInterface {
 		return false;
 	}
 	
-	 public UserToken getToken(String username, byte[] sKey)
+
+	 public UserToken getToken(byte[] sKey)
 	 {
 		try
 		{
@@ -85,7 +86,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 		 		 	
 			//Tell the server to return a token.
 			message = new Envelope("GET");
-			message.addObject(username); //Add user name string
+
 			Envelope m = AESEncrypt(message, sKey);
 			output.writeObject(m);
 			//Get the response from the server

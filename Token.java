@@ -11,6 +11,7 @@ public class Token implements UserToken,java.io.Serializable{
 	String serverName, username;
 	Date timestamp;
 	ArrayList<String> userGroups = new ArrayList<String>();
+	byte[] signature;
 	
 	public Token(String serverName, String username, ArrayList<String> userGroups, Date timestamp){
 		// TODO complete here
@@ -19,6 +20,7 @@ public class Token implements UserToken,java.io.Serializable{
 		this.userGroups = userGroups;
 		sort(this.userGroups);
 		this.timestamp = timestamp;
+		signature = null;
 	}
 
 	@Override
@@ -46,6 +48,14 @@ public class Token implements UserToken,java.io.Serializable{
 	//get the combined string of all token data
 	public String getTokendata(){
 		return serverName + username + timestamp.toString() + userGroups.toString();
+	}
+	
+	public void setSignature(byte[] bytes){
+		signature = bytes;
+	}
+	
+	public byte[] getSignature(){
+		return signature;
 	}
 	
 	//sort the arraylist
