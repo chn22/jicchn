@@ -53,45 +53,52 @@ public class GroupThread extends Thread
 			inStream = new ObjectInputStream(new FileInputStream(my_gs.serverName + ".private"));
 			privateKey = (PrivateKey)inStream.readObject();
 			inStream.close();
-						
+			
+			Envelope env = (Envelope)input.readObject();
+			Envelope rEnv;
+			if(env.getMessage().equals("GSPUBLIC"))//Client requests server's public key
+			{
+				rEnv = new Envelope("OK");
+				rEnv.addObject(publicKey);
+				output.writeObject(rEnv);
+			}
+			
+			env = (Envelope)input.readObject();
+			if(env.getMessage().equals("LOGIN"))//Client wants to login
+			{
+				byte[] encrypted = (byte[])env.getObjContents().get(0);
+				byte[] credential = RSADecrypt(encrypted, privateKey);
+				
+				int keySize = (Integer)env.getObjContents().get(1);
+				byte[] key = getSecretKey(credential, keySize);
+				String username = getUsername(credential, keySize);
+				String password = getPassword(credential, keySize);
+				if(keySize == 0 || credential == null)
+				{
+					rEnv = new Envelope("FAIL");
+				}
+				else
+				{
+					if(login(key, username, password)){
+						rEnv = new Envelope("OK");
+						sharedKey = key;
+					}
+					else{
+						rEnv = new Envelope("FAIL");
+					}
+				}
+				output.writeObject(rEnv);
+			}
+			
 			do
 			{
-				Envelope message = (Envelope)input.readObject();
+				Envelope mess = (Envelope)input.readObject();
+				Envelope message = AESDecrypt(mess, sharedKey);
 				System.out.println("Request received: " + message.getMessage());
 				Envelope response;
 				
-				if(message.getMessage().equals("GSPUBLIC"))//Client requests server's public key
-				{
-					response = new Envelope("OK");
-					response.addObject(publicKey);
-					output.writeObject(response);
-				}
-				else if(message.getMessage().equals("LOGIN"))//Client wants to login
-				{
-					byte[] encrypted = (byte[])message.getObjContents().get(0);
-					byte[] credential = RSADecrypt(encrypted, privateKey);
-					
-					int keySize = (Integer)message.getObjContents().get(1);
-					byte[] key = getSecretKey(credential, keySize);
-					String username = getUsername(credential, keySize);
-					String password = getPassword(credential, keySize);
-					if(keySize == 0 || credential == null)
-					{
-						response = new Envelope("FAIL");
-					}
-					else
-					{
-						if(login(key, username, password)){
-							response = new Envelope("OK");
-							sharedKey = key;
-						}
-						else{
-							response = new Envelope("FAIL");
-						}
-					}
-					output.writeObject(response);
-				}
-				else if(message.getMessage().equals("GET"))//Client wants a token
+				
+				if(message.getMessage().equals("GET"))//Client wants a token
 				{
 					String username = (String)message.getObjContents().get(0); //Get the username
 					if(username == null)

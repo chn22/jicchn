@@ -56,40 +56,41 @@ public class FileThread extends Thread
 			privateKey = (PrivateKey)inStream.readObject();
 			inStream.close();
 
+			Envelope env = (Envelope)input.readObject();
+			if(env.getMessage().equals("FSPUBLIC"))//Client requests server's public key
+			{
+				try{
+					response = new Envelope("OK");
+					response.addObject(publicKey);
+					output.writeObject(response);
+				}catch(Exception ex){
+					System.err.println(ex);
+				}
+			}
+			env = (Envelope)input.readObject();
+			if(env.getMessage().equals("CHALLENGE"))//Client requests server's public key
+			{
+				try{
+					response = new Envelope("OK");
+					byte[] challenge = (byte[])env.getObjContents().get(0);
+					byte[] deChallenge = RSADecrypt(challenge, privateKey);
+					int keySize = (Integer)env.getObjContents().get(1);
+					byte[] c = new byte[deChallenge.length - keySize];
+					System.arraycopy(deChallenge, keySize, c, 0, c.length);
+					response.addObject(c);
+					output.writeObject(response);
+				}catch(Exception ex){
+					ex.printStackTrace();
+				}
+			}
+			
 			do
 			{
-				Envelope e = (Envelope)input.readObject();
+				Envelope en = (Envelope)input.readObject();
+				Envelope e = AESDecrypt(en, sharedKey);
 				System.out.println("Request received: " + e.getMessage());
-				
-				if(e.getMessage().equals("FSPUBLIC"))//Client requests server's public key
-				{
-					try{
-						response = new Envelope("OK");
-						response.addObject(publicKey);
-						output.writeObject(response);
-					}catch(Exception ex){
-						System.err.println(ex);
-					}
-				}
-				
-				else if(e.getMessage().equals("CHALLENGE"))//Client requests server's public key
-				{
-					try{
-						response = new Envelope("OK");
-						byte[] challenge = (byte[])e.getObjContents().get(0);
-						byte[] deChallenge = RSADecrypt(challenge, privateKey);
-						int keySize = (Integer)e.getObjContents().get(1);
-						byte[] c = new byte[deChallenge.length - keySize];
-						System.arraycopy(deChallenge, keySize, c, 0, c.length);
-						response.addObject(c);
-						output.writeObject(response);
-					}catch(Exception ex){
-						ex.printStackTrace();
-					}
-				}
-				
 				// Handler to list files that this user is allowed to see
-				else if(e.getMessage().equals("LFILES"))
+				if(e.getMessage().equals("LFILES"))
 				{
 				    /* TODO: Write this handler */
 					if(e.getObjContents().size() < 1 || e.getObjContents().get(0) == null)

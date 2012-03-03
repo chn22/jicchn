@@ -1,14 +1,21 @@
 /* FileClient provides all the client functionality regarding the file server */
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class FileClient extends Client implements FileClientInterface {
 	
@@ -65,7 +72,7 @@ public class FileClient extends Client implements FileClientInterface {
 		return null;
 	}
 	
-	public boolean delete(String filename, UserToken token) {
+	public boolean delete(String filename, UserToken token, byte[] sKey) {
 		String remotePath;
 		if (filename.charAt(0)=='/') {
 			remotePath = filename.substring(1);
@@ -77,14 +84,16 @@ public class FileClient extends Client implements FileClientInterface {
 	    env.addObject(remotePath);
 	    env.addObject(token);
 	    try {
-			output.writeObject(env);
+	    	Envelope message = AESEncrypt(env, sKey);
+			output.writeObject(message);
 		    env = (Envelope)input.readObject();
+		    Envelope mess = AESDecrypt(env, sKey);
 		    
-			if (env.getMessage().compareTo("OK")==0) {
+			if (mess.getMessage().compareTo("OK")==0) {
 				System.out.printf("File %s deleted successfully\n", filename);				
 			}
 			else {
-				System.out.printf("Error deleting file %s (%s)\n", filename, env.getMessage());
+				System.out.printf("Error deleting file %s (%s)\n", filename, mess.getMessage());
 				return false;
 			}			
 		} catch (IOException e1) {
@@ -96,7 +105,7 @@ public class FileClient extends Client implements FileClientInterface {
 		return true;
 	}
 
-	public boolean download(String sourceFile, String destFile, UserToken token) {
+	public boolean download(String sourceFile, String destFile, UserToken token, byte[] sKey) {
 				if (sourceFile.charAt(0)=='/') {
 					sourceFile = sourceFile.substring(1);
 				}
@@ -112,16 +121,19 @@ public class FileClient extends Client implements FileClientInterface {
 					    Envelope env = new Envelope("DOWNLOADF"); //Success
 					    env.addObject(sourceFile);
 					    env.addObject(token);
-					    output.writeObject(env); 
+					    Envelope message = AESEncrypt(env, sKey);
+					    output.writeObject(message); 
 					
-					    env = (Envelope)input.readObject();
-					    
+					    Envelope mess = (Envelope)input.readObject();
+					    env = AESDecrypt(mess, sKey);
 						while (env.getMessage().compareTo("CHUNK")==0) { 
 								fos.write((byte[])env.getObjContents().get(0), 0, (Integer)env.getObjContents().get(1));
 								System.out.printf(".");
 								env = new Envelope("DOWNLOADF"); //Success
-								output.writeObject(env);
-								env = (Envelope)input.readObject();									
+								message = AESEncrypt(env, sKey);
+								output.writeObject(message);
+								mess = (Envelope)input.readObject();
+								env = AESDecrypt(mess, sKey);
 						}										
 						fos.close();
 						
@@ -129,7 +141,8 @@ public class FileClient extends Client implements FileClientInterface {
 					    	 fos.close();
 								System.out.printf("\nTransfer successful file %s\n", sourceFile);
 								env = new Envelope("OK"); //Success
-								output.writeObject(env);
+								message = AESEncrypt(env, sKey);
+								output.writeObject(message);
 						}
 						else {
 								System.out.printf("Error reading file %s (%s)\n", sourceFile, env.getMessage());
@@ -158,21 +171,23 @@ public class FileClient extends Client implements FileClientInterface {
 	}
 
 	@SuppressWarnings("unchecked")
-	public List<String> listFiles(UserToken token) {
+	public List<String> listFiles(UserToken token, byte[] sKey) {
 		 try
 		 {
 			 Envelope message = null, e = null;
 			 //Tell the server to return the member list
 			 message = new Envelope("LFILES");
 			 message.addObject(token); //Add requester's token
-			 output.writeObject(message); 
+			 Envelope m = AESEncrypt(message, sKey);
+			 output.writeObject(m); 
 			 
 			 e = (Envelope)input.readObject();
+			 Envelope env = AESDecrypt(e, sKey);
 			 
 			 //If server indicates success, return the member list
-			 if(e.getMessage().equals("OK"))
+			 if(env.getMessage().equals("OK"))
 			 { 
-				return (List<String>)e.getObjContents().get(0); //This cast creates compiler warnings. Sorry.
+				return (List<String>)env.getObjContents().get(0); //This cast creates compiler warnings. Sorry.
 			 }
 				
 			 return null;
@@ -187,7 +202,7 @@ public class FileClient extends Client implements FileClientInterface {
 	}
 
 	public boolean upload(String sourceFile, String destFile, String group,
-			UserToken token) {
+			UserToken token, byte[] sKey) {
 			
 		if (destFile.charAt(0)!='/') {
 			 destFile = "/" + destFile;
@@ -202,12 +217,14 @@ public class FileClient extends Client implements FileClientInterface {
 			 message.addObject(destFile);
 			 message.addObject(group);
 			 message.addObject(token); //Add requester's token
-			 output.writeObject(message);
+			 Envelope m = AESEncrypt(message, sKey);
+			 output.writeObject(m);
 			
 			 
 			 FileInputStream fis = new FileInputStream(sourceFile);
 			 
-			 env = (Envelope)input.readObject();
+			 Envelope mess = (Envelope)input.readObject();
+			 env = AESDecrypt(mess, sKey);
 			 
 			 //If server indicates success, return the member list
 			 if(env.getMessage().equals("READY"))
@@ -239,12 +256,12 @@ public class FileClient extends Client implements FileClientInterface {
 					
 					message.addObject(buf);
 					message.addObject(new Integer(n));
+					m = AESEncrypt(message, sKey);
+					output.writeObject(m);
 					
-					output.writeObject(message);
 					
-					
-					env = (Envelope)input.readObject();
-					
+					mess = (Envelope)input.readObject();
+					env = AESDecrypt(mess, sKey);
 										
 			 }
 			 while (fis.available()>0);		 
@@ -254,9 +271,11 @@ public class FileClient extends Client implements FileClientInterface {
 			 { 
 				
 				message = new Envelope("EOF");
-				output.writeObject(message);
+				m = AESEncrypt(message, sKey);
+				output.writeObject(m);
 				
-				env = (Envelope)input.readObject();
+				mess = (Envelope)input.readObject();
+				env = AESDecrypt(mess, sKey);
 				if(env.getMessage().compareTo("OK")==0) {
 					System.out.printf("\nFile data upload successful\n");
 				}
@@ -282,5 +301,56 @@ public class FileClient extends Client implements FileClientInterface {
 		 return true;
 	}
 
+	 public Envelope AESEncrypt(Envelope en, byte[] key){
+		 Envelope envelope = new Envelope("IV, Encryption");
+		 SecretKeySpec skeyspec = new SecretKeySpec(key, "AES");
+			try{
+				byte[] bytes = getBytes(en);
+				Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
+				cipher.init(Cipher.ENCRYPT_MODE, skeyspec);
+				envelope.addObject(cipher.getIV());
+				envelope.addObject(cipher.doFinal(bytes));
+			} catch(Exception e){
+				System.out.println(e);
+			}
+			return envelope;
+		}
+	 
+	 public static Envelope AESDecrypt(Envelope envelope, byte[] key){
+			Envelope en = null;
+			byte[] decrypt = null; 
+			byte[] IV = (byte[]) envelope.getObjContents().get(0);
+			byte[] encrypted = (byte[]) envelope.getObjContents().get(1);
+			SecretKeySpec skeyspec = new SecretKeySpec(key, "AES");
+			try{
+				Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
+				cipher.init(Cipher.DECRYPT_MODE, skeyspec, new IvParameterSpec(IV));
+				decrypt = cipher.doFinal(encrypted);
+				en = getEnvelope(decrypt);
+			} catch(Exception e){
+				System.out.println(e);
+			}
+			return en;
+		}
+	 
+	 private static Envelope getEnvelope(byte[] bytes) throws java.io.IOException, ClassNotFoundException{
+			ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+			ObjectInputStream ois = new ObjectInputStream(bis);
+			Envelope e= (Envelope) ois.readObject();
+			ois.close();
+			bis.close();
+			return e;
+		}
+	 
+	 private static byte[] getBytes(Envelope e) throws java.io.IOException{
+	      ByteArrayOutputStream bos = new ByteArrayOutputStream(); 
+	      ObjectOutputStream oos = new ObjectOutputStream(bos); 
+	      oos.writeObject(e);
+	      oos.flush(); 
+	      oos.close(); 
+	      bos.close();
+	      byte [] data = bos.toByteArray();
+	      return data;
+	  }
 }
 

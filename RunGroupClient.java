@@ -255,40 +255,8 @@ public class RunGroupClient{
 			catch(Exception e){
 			   System.err.println(e);
 			}
-			if(input.toUpperCase().equals("GSPUBLIC")){
-				PublicKey publicKey = groupClient.getPublicKey();
-				groupServerKey = publicKey;
-				if(publicKey != null){
-					byte[] pKey = publicKey.getEncoded();
-					try{
-						MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
-						byte[] fingerPrint = md.digest(pKey);
-						System.out.println("The server's rsa key fingerprint is :\n");
-						//convert hashed public key into hexadecimal
-						StringBuffer strbuf = new StringBuffer(fingerPrint.length * 2);
-					    int i;
-					    for (i = 0; i < fingerPrint.length; i++) {
-					    	if (((int) fingerPrint[i] & 0xff) < 0x10)
-					    		strbuf.append("0");
-					    	strbuf.append(Long.toString((int) fingerPrint[i] & 0xff, 16));
-					    }
-						System.out.println(strbuf);
-						System.out.println("Enter 'yes' to continue or 'no' to disconnect > ");
-						input = in.readLine();
-						if(!input.toLowerCase().equals("yes") && !input.toLowerCase().equals("y")){
-							groupClient.disconnect();
-							break;
-						}
-					} catch(Exception e){
-						System.out.println(e);
-					}
-				}
-				else{
-					System.out.println("Error in obtain server's key fingerprint");
-				}
-			}
 			
-			else if(input.toUpperCase().equals("CUSER")){
+			if(input.toUpperCase().equals("CUSER")){
 				System.out.println("Enter the username to create");
 				System.out.print(" > ");	
 				String username = null;
@@ -297,7 +265,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.createUser(username, token);
+				boolean result = groupClient.createUser(username, token, gSharedKey.getEncoded());
 				if(result){
 					System.out.println("success");
 				}
@@ -314,7 +282,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.deleteUser(username, token);
+				boolean result = groupClient.deleteUser(username, token, gSharedKey.getEncoded());
 				if(result){
 					System.out.println("success");
 				}
@@ -328,7 +296,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.createGroup(groupname, token);
+				boolean result = groupClient.createGroup(groupname, token, gSharedKey.getEncoded());
 				if(result){
 					System.out.println("success");
 				}
@@ -342,7 +310,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.deleteGroup(groupname, token);
+				boolean result = groupClient.deleteGroup(groupname, token, gSharedKey.getEncoded());
 				if(result){
 					System.out.println("success");
 				}
@@ -356,7 +324,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				List<String> result = groupClient.listMembers(groupname, token);
+				List<String> result = groupClient.listMembers(groupname, token, gSharedKey.getEncoded());
 				if(result != null){
 					System.out.println("number of members: " + result.size());
 					for(int i = 0; i < result.size(); i++){
@@ -379,7 +347,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.addUserToGroup(username, groupname, token);
+				boolean result = groupClient.addUserToGroup(username, groupname, token, gSharedKey.getEncoded());
 				if(result){
 					System.out.println("success");
 				}
@@ -401,7 +369,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.deleteUserFromGroup(username, groupname, token);
+				boolean result = groupClient.deleteUserFromGroup(username, groupname, token, gSharedKey.getEncoded());
 				if(result){
 					System.out.println("success");
 				}
@@ -510,41 +478,6 @@ public class RunGroupClient{
 					System.out.println("Successfully disconnected from File Server");
 				}
 			}
-			
-			else if(input.toUpperCase().equals("FSPUBLIC")){
-				PublicKey publicKey = fileClient.getPublicKey();
-				fileServerKey = publicKey;
-				if(publicKey != null){
-					byte[] pKey = publicKey.getEncoded();
-					try{
-						MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
-						byte[] fingerPrint = md.digest(pKey);
-						System.out.println("The server's rsa key fingerprint is :\n");
-						//convert hashed public key into hexadecimal
-						StringBuffer strbuf = new StringBuffer(fingerPrint.length * 2);
-					    int i;
-					    for (i = 0; i < fingerPrint.length; i++) {
-					    	if (((int) fingerPrint[i] & 0xff) < 0x10)
-					    		strbuf.append("0");
-					    	strbuf.append(Long.toString((int) fingerPrint[i] & 0xff, 16));
-					    }
-						System.out.println(strbuf);
-						System.out.println("Enter 'yes' to continue or 'no' to disconnect > ");
-						input = in.readLine();
-						if(!input.toLowerCase().equals("yes") && !input.toLowerCase().equals("y")){
-							fileClient.disconnect();
-							FSConnected = false;
-							System.out.println("Successfully disconnected from File Server");
-						}
-					} catch(Exception e){
-						System.out.println(e);
-					}
-				}
-				else{
-					System.out.println("Error in obtain server's key fingerprint");
-				}
-			}
-			
 			else if(input.toUpperCase().equals("LISTFILES"))
 			{
 				if(!FSConnected)
@@ -553,7 +486,7 @@ public class RunGroupClient{
 				}
 				else
 				{
-					List<String> filelist = fileClient.listFiles(token);
+					List<String> filelist = fileClient.listFiles(token, fSharedKey.getEncoded());
 					for(String filename : filelist)
 					{
 						System.out.println(filename);
@@ -584,7 +517,7 @@ public class RunGroupClient{
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					boolean result = fileClient.upload(sourceFile, destFile, group, token);
+					boolean result = fileClient.upload(sourceFile, destFile, group, token, fSharedKey.getEncoded());
 					if(result){
 						System.out.println("Upload Success");
 					}
@@ -614,7 +547,7 @@ public class RunGroupClient{
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					boolean result = fileClient.download(sourceFile, destFile, token);
+					boolean result = fileClient.download(sourceFile, destFile, token, fSharedKey.getEncoded());
 					if(result){
 						System.out.println("Download Success");
 					}
@@ -640,7 +573,7 @@ public class RunGroupClient{
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					boolean result = fileClient.delete(filename, token);
+					boolean result = fileClient.delete(filename, token, fSharedKey.getEncoded());
 					if(result){
 						System.out.println("Delete Success");
 					}
