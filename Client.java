@@ -12,7 +12,7 @@ public abstract class Client {
 	protected ObjectInputStream input;
 
 	public boolean connect(final String server, final int port) {
-		System.out.println("attempting to connect");
+		System.out.println("attempting to connect...");
 		
 		/* TODO: Write this method */
 		try{
@@ -20,8 +20,9 @@ public abstract class Client {
 			output = new ObjectOutputStream(sock.getOutputStream());
 			input = new ObjectInputStream(sock.getInputStream());
 		}catch(Exception e){
-			 System.err.println("Error: " + e.getMessage());
-			 e.printStackTrace(System.err);
+			return false;
+			 //System.err.println("Error: " + e.getMessage());
+			 //e.printStackTrace(System.err);
 		}
 		
 		return true;

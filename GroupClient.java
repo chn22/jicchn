@@ -44,6 +44,30 @@ public class GroupClient extends Client implements GroupClientInterface {
 		}
 	}
 	
+	public boolean login(byte[] credential, int keySize){
+		try{
+			Envelope message = null, response = null;
+			
+			 message = new Envelope("LOGIN");
+			 message.addObject(credential); 
+			 message.addObject(keySize); 
+			 output.writeObject(message);
+		
+			 response = (Envelope)input.readObject();
+			 
+			 if(response.getMessage().equals("OK"))
+			 {
+				 return true;
+			 }
+		}catch(Exception e)
+		{
+			System.err.println("Error: " + e.getMessage());
+			e.printStackTrace(System.err);
+			return false;
+		}
+		return false;
+	}
+	
 	 public UserToken getToken(String username)
 	 {
 		try
@@ -62,7 +86,6 @@ public class GroupClient extends Client implements GroupClientInterface {
 			if(response.getMessage().equals("OK"))
 				
 			{
-				
 				//If there is a token in the Envelope, return it 
 				ArrayList<Object> temp = null;
 				temp = response.getObjContents();

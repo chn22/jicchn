@@ -63,6 +63,13 @@ import java.util.*;
 			list.get(user).removeOwnership(groupname);
 		}
 		
+		public synchronized byte[] getPassword(String user){
+			return list.get(user).getPassword();
+		}
+		
+		public synchronized void setPassword(String user, byte[] password){
+			list.get(user).setPassword(password);
+		}
 	
 	class User implements java.io.Serializable {
 
@@ -72,6 +79,7 @@ import java.util.*;
 		private static final long serialVersionUID = -6699986336399821598L;
 		private ArrayList<String> groups;
 		private ArrayList<String> ownership;
+		private byte[] password;
 		
 		public User()
 		{
@@ -119,6 +127,15 @@ import java.util.*;
 					ownership.remove(ownership.indexOf(group));
 				}
 			}
+		}
+		
+		public byte[] getPassword()
+		{
+			return password;
+		}
+		
+		public void setPassword(byte[] p){
+			password = p;
 		}
 		
 	}

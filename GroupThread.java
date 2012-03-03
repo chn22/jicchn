@@ -7,6 +7,7 @@ import java.io.*;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Security;
 import java.util.*;
 
 import javax.crypto.Cipher;
@@ -14,10 +15,15 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 public class GroupThread extends Thread 
 {
 	private final Socket socket;
 	private GroupServer my_gs;
+	private PublicKey publicKey;
+	private PrivateKey privateKey;
+	private byte[] sharedKey;
 	
 	public GroupThread(Socket _socket, GroupServer _gs)
 	{
@@ -37,6 +43,18 @@ public class GroupThread extends Thread
 			final ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
 			final ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
 			
+			Security.addProvider(new BouncyCastleProvider());
+			
+			
+			//load public and private key pair
+			ObjectInputStream inStream;
+			inStream = new ObjectInputStream(new FileInputStream(my_gs.serverName + ".public"));
+			publicKey = (PublicKey)inStream.readObject();
+			inStream.close();
+			inStream = new ObjectInputStream(new FileInputStream(my_gs.serverName + ".private"));
+			privateKey = (PrivateKey)inStream.readObject();
+			inStream.close();
+						
 			do
 			{
 				Envelope message = (Envelope)input.readObject();
@@ -45,17 +63,34 @@ public class GroupThread extends Thread
 				
 				if(message.getMessage().equals("GSPUBLIC"))//Client requests server's public key
 				{
-					try{
-						ObjectInputStream inStream;
-						inStream = new ObjectInputStream(new FileInputStream(my_gs.serverName + ".public"));
-						PublicKey publicKey = (PublicKey)inStream.readObject();
-						response = new Envelope("OK");
-						response.addObject(publicKey);
-						output.writeObject(response);
-					}catch(Exception e){
-						System.err.println(e);
-					}
+					response = new Envelope("OK");
+					response.addObject(publicKey);
+					output.writeObject(response);
+				}
+				else if(message.getMessage().equals("LOGIN"))//Client wants to login
+				{
+					byte[] encrypted = (byte[])message.getObjContents().get(0);
+					byte[] credential = RSADecrypt(encrypted, privateKey);
 					
+					int keySize = (Integer)message.getObjContents().get(1);
+					byte[] key = getSecretKey(credential, keySize);
+					String username = getUsername(credential, keySize);
+					String password = getPassword(credential, keySize);
+					if(keySize == 0 || credential == null)
+					{
+						response = new Envelope("FAIL");
+					}
+					else
+					{
+						if(login(key, username, password)){
+							response = new Envelope("OK");
+							sharedKey = key;
+						}
+						else{
+							response = new Envelope("FAIL");
+						}
+					}
+					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("GET"))//Client wants a token
 				{
@@ -295,6 +330,23 @@ public class GroupThread extends Thread
 	}
 	
 	
+	private boolean login(byte[] sharedKey, String username, String password){
+		//Check if user exists
+		if(my_gs.userList.checkUser(username)){
+			//first time login,
+			if(my_gs.userList.getPassword(username) == null){
+				//store the hashed password
+				my_gs.userList.setPassword(username, getHash(password));
+				return true;
+			}
+			else{
+				if(Arrays.equals(getHash(password),my_gs.userList.getPassword(username))){
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 	
 	
 	

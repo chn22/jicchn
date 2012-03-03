@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Scanner;
 
 import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -31,6 +32,7 @@ public class RunGroupClient{
 	static int fileServerPort = 4321;
 	static PublicKey groupServerKey = null;
 	static PublicKey fileServerKey = null;
+	private static SecretKey sKey = null;
 	
 	public static byte[] RSAEncrypt(byte[] bytes, PrivateKey key){
 		byte[] encrypted = null;
@@ -159,18 +161,71 @@ public class RunGroupClient{
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		UserToken token = null;
 		//connect to the group server
-		groupClient.connect(groupServerAddress,groupServerPort);
+		if(groupClient.connect(groupServerAddress,groupServerPort)){
+			System.out.println("connection success.");
+			Security.addProvider(new BouncyCastleProvider());
+			
+			//print out server's public key fingerprint
+			PublicKey publicKey = groupClient.getPublicKey();
+			groupServerKey = publicKey;
+			if(publicKey != null){
+				byte[] pKey = publicKey.getEncoded();
+				try{
+					MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
+					byte[] fingerPrint = md.digest(pKey);
+					System.out.println("The server's rsa key fingerprint is :\n");
+					
+					//convert hashed public key into hexadecimal
+					StringBuffer strbuf = new StringBuffer(fingerPrint.length * 2);
+				    int i;
+				    for (i = 0; i < fingerPrint.length; i++) {
+				    	if (((int) fingerPrint[i] & 0xff) < 0x10)
+				    		strbuf.append("0");
+				    	strbuf.append(Long.toString((int) fingerPrint[i] & 0xff, 16));
+				    }
+					System.out.println(strbuf);
+					System.out.println("Enter 'yes' to continue or 'no' to disconnect > ");
+					input = in.readLine();
+					if(!input.toLowerCase().equals("yes") && !input.toLowerCase().equals("y")){
+						groupClient.disconnect();
+						System.exit(0);
+					}
+				} catch(Exception e){
+					System.out.println(e);
+				}
+			}
+			else{
+				System.out.println("Error in obtain server's key fingerprint");
+			}
+		}
+		else{
+			System.out.println("connection fail.");
+			System.exit(1);
+		}
 		boolean FSConnected = false;
-		String usert = "";
+		boolean loginSuccess = false;
 		
 		try{
-			while(token == null){
-				System.out.println("Enter your username");
+			
+			
+			while(!loginSuccess){
+				System.out.println("Enter your username to login");
 				System.out.print(" > ");
-				usert = in.readLine();
-				token = groupClient.getToken(usert);
-				if(token == null){
-					System.out.println("not a valid user");
+				String username = in.readLine();
+				System.out.println("Enter your password to login");
+				System.out.print(" > ");
+				String password = in.readLine();
+				KeyGenerator kgen = KeyGenerator.getInstance("AES", "BC");
+				kgen.init(128);
+				sKey = kgen.generateKey();
+				byte[] mergedData = merge(sKey.getEncoded(), username, password);
+				byte[] encryptedLogin = RSAEncrypt(mergedData, groupServerKey);
+				loginSuccess = groupClient.login(encryptedLogin, 128/8);
+				if(loginSuccess){
+					System.out.println("Login successful.");
+				}
+				else{
+					System.out.println("Login fail.");
 				}
 			}
 		}catch(Exception e){
@@ -194,7 +249,7 @@ public class RunGroupClient{
 				if(publicKey != null){
 					byte[] pKey = publicKey.getEncoded();
 					try{
-						Security.addProvider(new BouncyCastleProvider());
+						//Security.addProvider(new BouncyCastleProvider());
 						MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
 						byte[] fingerPrint = md.digest(pKey);
 						System.out.println("The server's rsa key fingerprint is :\n");
@@ -210,7 +265,9 @@ public class RunGroupClient{
 						System.out.println("Enter 'yes' to continue or 'no' to disconnect > ");
 						input = in.readLine();
 						if(!input.toLowerCase().equals("yes") && !input.toLowerCase().equals("y")){
-							input = "DISCONNECT";
+							//input = "DISCONNECT";
+							groupClient.disconnect();
+							break;
 						}
 					} catch(Exception e){
 						System.out.println(e);
@@ -221,7 +278,7 @@ public class RunGroupClient{
 				}
 			}
 			
-			if(input.toUpperCase().equals("CUSER")){
+			else if(input.toUpperCase().equals("CUSER")){
 				System.out.println("Enter the username to create");
 				System.out.print(" > ");	
 				String username = null;
@@ -234,6 +291,9 @@ public class RunGroupClient{
 				boolean result = groupClient.createUser(username, token);
 				if(result){
 					System.out.println("success");
+				}
+				else{
+					System.out.println("fail");
 				}
 			}
 			else if(input.toUpperCase().equals("DUSER")){
@@ -362,9 +422,13 @@ public class RunGroupClient{
 					}catch(Exception e){
 						fileServerPort = 4321;
 					}
-					fileClient.connect(fileServerAddress,fileServerPort);
-					FSConnected = true;
-					System.out.println("Connected to File Server Successfully");
+					if(fileClient.connect(fileServerAddress,fileServerPort)){
+						FSConnected = true;
+						System.out.println("Connected to File Server Successfully");
+					}
+					else{
+						System.out.println("Connection fail.");
+					}
 				}
 				else
 				{
@@ -391,7 +455,7 @@ public class RunGroupClient{
 				if(publicKey != null){
 					byte[] pKey = publicKey.getEncoded();
 					try{
-						Security.addProvider(new BouncyCastleProvider());
+						//Security.addProvider(new BouncyCastleProvider());
 						MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
 						byte[] fingerPrint = md.digest(pKey);
 						System.out.println("The server's rsa key fingerprint is :\n");
