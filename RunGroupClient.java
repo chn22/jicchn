@@ -246,7 +246,7 @@ public class RunGroupClient{
 		
 		//loop to wait for command
 		do{
-			//token = groupClient.getToken();
+			token = groupClient.getToken(gSharedKey.getEncoded());
 			try{
 				System.out.println("Enter command, or type \"DISCONNECT\" to disconnect from groupserver.");
 				System.out.print(" > ");	
@@ -377,9 +377,9 @@ public class RunGroupClient{
 			else if(input.toUpperCase().equals("DISCONNECT")){
 				if(FSConnected)
 				{
-					fileClient.disconnect();
+					fileClient.disconnect(gSharedKey.getEncoded());
 				}
-				groupClient.disconnect();
+				groupClient.disconnect(gSharedKey.getEncoded());
 			}
 			else if(input.toUpperCase().equals("FSCONNECT"))
 			{
@@ -418,7 +418,7 @@ public class RunGroupClient{
 								System.out.println("Enter 'yes' to continue or 'no' to disconnect > ");
 								input = in.readLine();
 								if(!input.toLowerCase().equals("yes") && !input.toLowerCase().equals("y")){
-									fileClient.disconnect();
+									fileClient.disconnect(gSharedKey.getEncoded());
 									FSConnected = false;
 									System.out.println("Successfully disconnected from File Server");
 								}
@@ -443,7 +443,7 @@ public class RunGroupClient{
 									System.out.println("File Server challenge success. Connection success.");
 								}
 								else{
-									fileClient.disconnect();
+									fileClient.disconnect(gSharedKey.getEncoded());
 									FSConnected = false;
 									System.out.println("File Server challenge fail. Connection closed.");
 								}
@@ -465,6 +465,7 @@ public class RunGroupClient{
 					System.out.println("Already Connected to File Server");
 				}
 			}
+			
 			else if(input.toUpperCase().equals("FSDISCONNECT"))
 			{
 				if(!FSConnected)
@@ -473,7 +474,7 @@ public class RunGroupClient{
 				}
 				else
 				{
-					fileClient.disconnect();
+					fileClient.disconnect(gSharedKey.getEncoded());
 					FSConnected = false;
 					System.out.println("Successfully disconnected from File Server");
 				}
