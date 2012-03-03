@@ -55,42 +55,45 @@ public class GroupThread extends Thread
 			privateKey = (PrivateKey)inStream.readObject();
 			inStream.close();
 			
-			Envelope env = (Envelope)input.readObject();
-			Envelope rEnv;
-			if(env.getMessage().equals("GSPUBLIC"))//Client requests server's public key
-			{
-				rEnv = new Envelope("OK");
-				rEnv.addObject(publicKey);
-				output.writeObject(rEnv);
-			}
-			
-			env = (Envelope)input.readObject();
-			if(env.getMessage().equals("LOGIN"))//Client wants to login
-			{
-				byte[] encrypted = (byte[])env.getObjContents().get(0);
-				byte[] credential = RSADecrypt(encrypted, privateKey);
-				
-				int keySize = (Integer)env.getObjContents().get(1);
-				byte[] key = getSecretKey(credential, keySize);
-				String username = getUsername(credential, keySize);
-				USERNAME = getUsername(credential, keySize);
-				String password = getPassword(credential, keySize);
-				if(keySize == 0 || credential == null)
+			boolean loggedIn = false;
+			while(!loggedIn){
+				Envelope env = (Envelope)input.readObject();
+				Envelope rEnv;
+				if(env.getMessage().equals("GSPUBLIC"))//Client requests server's public key
 				{
-					rEnv = new Envelope("FAIL");
+					rEnv = new Envelope("OK");
+					rEnv.addObject(publicKey);
+					output.writeObject(rEnv);
 				}
-				else
+				else if(env.getMessage().equals("LOGIN"))//Client wants to login
 				{
-					if(login(key, username, password)){
-						rEnv = new Envelope("OK");
-						sharedKey = key;
-					}
-					else{
+					byte[] encrypted = (byte[])env.getObjContents().get(0);
+					byte[] credential = RSADecrypt(encrypted, privateKey);
+					
+					int keySize = (Integer)env.getObjContents().get(1);
+					byte[] key = getSecretKey(credential, keySize);
+					String username = getUsername(credential, keySize);
+					USERNAME = getUsername(credential, keySize);
+					String password = getPassword(credential, keySize);
+					if(keySize == 0 || credential == null)
+					{
 						rEnv = new Envelope("FAIL");
 					}
+					else
+					{
+						if(login(key, username, password)){
+							rEnv = new Envelope("OK");
+							sharedKey = key;
+							loggedIn = true;
+						}
+						else{
+							rEnv = new Envelope("FAIL");
+						}
+					}
+					output.writeObject(rEnv);
 				}
-				output.writeObject(rEnv);
 			}
+			
 			
 			do
 			{
@@ -107,6 +110,7 @@ public class GroupThread extends Thread
 					{
 						response = new Envelope("FAIL");
 						response.addObject(null);
+						response = AESEncrypt(response, sharedKey);
 						output.writeObject(response);
 					}
 					else
@@ -120,6 +124,7 @@ public class GroupThread extends Thread
 						//Respond to the client. On error, the client will receive a null token
 						response = new Envelope("OK");
 						response.addObject(yourToken);
+						response = AESEncrypt(response, sharedKey);
 						output.writeObject(response);
 					}
 				}
@@ -338,7 +343,6 @@ public class GroupThread extends Thread
 		}
 		catch(Exception e)
 		{
-			System.err.println("Error: " + e.getMessage());
 			e.printStackTrace(System.err);
 		}
 	}

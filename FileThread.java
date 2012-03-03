@@ -52,10 +52,10 @@ public class FileThread extends Thread
 			
 
 			ObjectInputStream inStream;
-			inStream = new ObjectInputStream(new FileInputStream("ALPHA.public"));
-			gspublicKey = (PublicKey)inStream.readObject();
-			inStream.close();
-
+			inStream = new ObjectInputStream(new FileInputStream("ALPHA.public")); 	
+		    gspublicKey = (PublicKey)inStream.readObject();
+		 	inStream.close();
+			
 			Security.addProvider(new BouncyCastleProvider());
 			
 			//load public and private key pair
@@ -91,6 +91,8 @@ public class FileThread extends Thread
 					response.addObject(c);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
+					sharedKey = new byte[keySize];
+					System.arraycopy(deChallenge, 0, sharedKey, 0, sharedKey.length);
 				}catch(Exception ex){
 					ex.printStackTrace();
 				}

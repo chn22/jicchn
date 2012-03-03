@@ -86,7 +86,6 @@ public class GroupClient extends Client implements GroupClientInterface {
 		 		 	
 			//Tell the server to return a token.
 			message = new Envelope("GET");
-
 			Envelope m = AESEncrypt(message, sKey);
 			output.writeObject(m);
 			//Get the response from the server
