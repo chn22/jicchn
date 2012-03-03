@@ -6,6 +6,7 @@ import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -26,6 +27,7 @@ public class FileThread extends Thread
 {
 	private final Socket socket;
 	private ArrayList<Date> timestamps = new ArrayList<Date>();
+	private PublicKey gspublicKey;
 
 	public FileThread(Socket _socket)
 	{
@@ -41,7 +43,12 @@ public class FileThread extends Thread
 			final ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
 			final ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
 			Envelope response;
-
+			
+			ObjectInputStream inStream;
+			inStream = new ObjectInputStream(new FileInputStream("ALPHA.public"));
+			gspublicKey = (PublicKey)inStream.readObject();
+			inStream.close();
+			
 			do
 			{
 				Envelope e = (Envelope)input.readObject();
@@ -50,7 +57,6 @@ public class FileThread extends Thread
 				if(e.getMessage().equals("FSPUBLIC"))//Client requests server's public key
 				{
 					try{
-						ObjectInputStream inStream;
 						inStream = new ObjectInputStream(new FileInputStream(FileServer.serverName + ".public"));
 						PublicKey publicKey = (PublicKey)inStream.readObject();
 						response = new Envelope("OK");
@@ -72,19 +78,25 @@ public class FileThread extends Thread
 					else
 					{
 						UserToken yourToken = (UserToken)e.getObjContents().get(0); //Extract token 
-						response = new Envelope("OK");
-						List<String> list = new ArrayList<String>();
-						for(int i = 0; i < FileServer.fileList.getFiles().size(); i++)
-						{
-							for(int j = 0; j < yourToken.getGroups().size(); j++)
+						if(!checkToken(yourToken)){
+							System.out.println("Token not valid");
+							response = new Envelope("TOKEN_NOT_VALID");
+						}
+						else{
+							response = new Envelope("OK");
+							List<String> list = new ArrayList<String>();
+							for(int i = 0; i < FileServer.fileList.getFiles().size(); i++)
 							{
-								if(FileServer.fileList.getFiles().get(i).getGroup().equals(yourToken.getGroups().get(j)))
+								for(int j = 0; j < yourToken.getGroups().size(); j++)
 								{
-									list.add(FileServer.fileList.getFiles().get(i).getPath());
+									if(FileServer.fileList.getFiles().get(i).getGroup().equals(yourToken.getGroups().get(j)))
+									{
+										list.add(FileServer.fileList.getFiles().get(i).getPath());
+									}
 								}
 							}
+							response.addObject(list);
 						}
-						response.addObject(list);
 					}
 					output.writeObject(response);
 				}
@@ -110,8 +122,11 @@ public class FileThread extends Thread
 							String remotePath = (String)e.getObjContents().get(0);
 							String group = (String)e.getObjContents().get(1);
 							UserToken yourToken = (UserToken)e.getObjContents().get(2); //Extract token
-
-							if (FileServer.fileList.checkFile(remotePath)) {
+							if(!checkToken(yourToken)){
+								System.out.println("Token not valid");
+								response = new Envelope("TOKEN_NOT_VALID");
+							}
+							else if (FileServer.fileList.checkFile(remotePath)) {
 								System.out.printf("Error: file already exists at %s\n", remotePath);
 								response = new Envelope("FAIL-FILEEXISTS"); //Success
 							}
@@ -157,7 +172,12 @@ public class FileThread extends Thread
 					String remotePath = (String)e.getObjContents().get(0);
 					Token t = (Token)e.getObjContents().get(1);
 					ShareFile sf = FileServer.fileList.getFile("/"+remotePath);
-					if (sf == null) {
+					if(!checkToken(t)){
+						System.out.println("Token not valid");
+						e = new Envelope("TOKEN_NOT_VALID");
+						output.writeObject(e);
+					}
+					else if (sf == null) {
 						System.out.printf("Error: File %s doesn't exist\n", remotePath);
 						e = new Envelope("ERROR_FILEMISSING");
 						output.writeObject(e);
@@ -248,7 +268,12 @@ public class FileThread extends Thread
 					String remotePath = (String)e.getObjContents().get(0);
 					Token t = (Token)e.getObjContents().get(1);
 					ShareFile sf = FileServer.fileList.getFile("/"+remotePath);
-					if (sf == null) {
+					if(!checkToken(t)){
+						System.out.println("Token not valid");
+						e = new Envelope("TOKEN_NOT_VALID");
+						output.writeObject(e);
+					}
+					else if (sf == null) {
 						System.out.printf("Error: File %s doesn't exist\n", remotePath);
 						e = new Envelope("ERROR_DOESNTEXIST");
 					}
@@ -444,5 +469,13 @@ public class FileThread extends Thread
 		}
 		timestamps.add(d);
 		return true;
+	}
+	
+	private boolean checkToken(UserToken token){
+		String tokendata = token.getTokendata();
+		byte[] hashed = getHash(tokendata);
+		byte[] signed = token.getSignature();
+		byte[] compare = RSADecrypt(signed, gspublicKey);
+		return Arrays.equals(hashed,compare);
 	}
 }

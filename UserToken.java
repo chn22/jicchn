@@ -52,5 +52,8 @@ public interface UserToken
     public Date getTimestamp();
     
     public String getTokendata();
-
+    
+    public void setSignature(byte[] bytes);
+	
+	public byte[] getSignature();
 }   //-- end interface UserToken
