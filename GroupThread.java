@@ -25,11 +25,15 @@ public class GroupThread extends Thread
 	private PrivateKey privateKey;
 	private byte[] sharedKey;
 	private String USERNAME;
+	private int inCounter;
+	private int outCounter;
 	
 	public GroupThread(Socket _socket, GroupServer _gs)
 	{
 		socket = _socket;
 		my_gs = _gs;
+		inCounter = 0;
+		outCounter = 0;
 	}
 	
 	public void run()
@@ -59,11 +63,16 @@ public class GroupThread extends Thread
 			while(!loggedIn && proceed){
 				try{
 					Envelope env = (Envelope)input.readObject();
+					if(env.getNumber() != inCounter++){
+						 System.out.println("message order incorrect.\nConnection terminated.");
+						 System.exit(1);
+					}
 					Envelope rEnv;
 					if(env.getMessage().equals("GSPUBLIC"))//Client requests server's public key
 					{
 						rEnv = new Envelope("OK");
 						rEnv.addObject(publicKey);
+						rEnv.setNumber(outCounter++);
 						output.writeObject(rEnv);
 					}
 					else if(env.getMessage().equals("LOGIN"))//Client wants to login
@@ -91,6 +100,7 @@ public class GroupThread extends Thread
 								rEnv = new Envelope("FAIL");
 							}
 						}
+						rEnv.setNumber(outCounter++);
 						output.writeObject(rEnv);
 					}
 				}catch(Exception ex){
@@ -111,6 +121,10 @@ public class GroupThread extends Thread
 					break;
 				}
 				Envelope message = AESDecrypt(mess, sharedKey);
+				if(message.getNumber() != inCounter++){
+					 System.out.println("message order incorrect.\nConnection terminated.");
+					 System.exit(1);
+				}
 				System.out.println("Request received: " + message.getMessage());
 				Envelope response;
 				
@@ -122,6 +136,7 @@ public class GroupThread extends Thread
 					{
 						response = new Envelope("FAIL");
 						response.addObject(null);
+						response.setNumber(outCounter++);
 						response = AESEncrypt(response, sharedKey);
 						output.writeObject(response);
 					}
@@ -136,6 +151,7 @@ public class GroupThread extends Thread
 						//Respond to the client. On error, the client will receive a null token
 						response = new Envelope("OK");
 						response.addObject(yourToken);
+						response.setNumber(outCounter++);
 						response = AESEncrypt(response, sharedKey);
 						output.writeObject(response);
 					}
@@ -163,6 +179,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -191,6 +208,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -219,6 +237,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 					
@@ -248,6 +267,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -277,6 +297,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -307,6 +328,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -337,6 +359,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -348,6 +371,7 @@ public class GroupThread extends Thread
 				else
 				{
 					response = new Envelope("FAIL"); //Server does not understand client request
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}

@@ -42,12 +42,14 @@ public abstract class Client {
 		}
 	}
 
-	public void disconnect()	 {
+	public void disconnect(int counter)	 {
 		if (isConnected()) {
 			try
 			{
 				Envelope message = new Envelope("DISCONNECT");
+				message.setNumber(counter);
 				output.writeObject(message);
+				sock.close();
 			}
 			catch(Exception e)
 			{
@@ -57,13 +59,15 @@ public abstract class Client {
 		}
 	}
 	
-	public void disconnect(byte[] sKey)	 {
+	public void disconnect(byte[] sKey, int counter)	 {
 		if (isConnected()) {
 			try
 			{
 				Envelope message = new Envelope("DISCONNECT");
+				message.setNumber(counter);
 				message = AESEncrypt(message, sKey);
 				output.writeObject(message);
+				sock.close();
 			}
 			catch(Exception e)
 			{

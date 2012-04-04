@@ -170,7 +170,7 @@ public class RunGroupClient{
 		}
 		
 		GroupClient groupClient = new GroupClient();
-		FileClient fileClient = new FileClient();
+		FileClient fileClient = null;
 		String input = null;
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		UserToken token = null;
@@ -398,6 +398,7 @@ public class RunGroupClient{
 					}catch(Exception e){
 						fileServerPort = 4321;
 					}
+					fileClient = new FileClient();
 					if(fileClient.connect(fileServerAddress,fileServerPort)){
 						FSConnected = true;
 						System.out.println("Connected to File Server Successfully");
