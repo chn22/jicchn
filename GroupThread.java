@@ -100,9 +100,16 @@ public class GroupThread extends Thread
 			}
 			
 			
-			while(proceed == true)
+			while(proceed)
 			{
-				Envelope mess = (Envelope)input.readObject();
+				Envelope mess = null;
+				try{
+					mess = (Envelope)input.readObject();
+				}catch(Exception e){
+					System.out.println("Client disconnected.");
+					proceed = false;
+					break;
+				}
 				Envelope message = AESDecrypt(mess, sharedKey);
 				System.out.println("Request received: " + message.getMessage());
 				Envelope response;

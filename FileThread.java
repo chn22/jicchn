@@ -97,13 +97,25 @@ public class FileThread extends Thread
 						ex.printStackTrace();
 					}
 				}
+				else if(env.getMessage().equals("DISCONNECT")){
+					proceed = false;
+					System.out.println("Client disconnected");
+				}
 			}catch(Exception ex){
 				System.out.println("Client disconnected.");
 			}
 			
-			do
+			while(proceed)
 			{
-				Envelope en = (Envelope)input.readObject();
+				Envelope en = null;
+				try{
+					en = (Envelope)input.readObject();
+				}
+				catch(Exception e){
+					System.out.println("Client disconnected.");
+					proceed = false;
+					break;
+				}
 				Envelope e = AESDecrypt(en, sharedKey);
 				System.out.println("Request received: " + e.getMessage());
 				// Handler to list files that this user is allowed to see
@@ -372,7 +384,7 @@ public class FileThread extends Thread
 					socket.close();
 					proceed = false;
 				}
-			} while(proceed);
+			}
 		}
 		catch(Exception e)
 		{
