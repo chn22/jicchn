@@ -1,15 +1,9 @@
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
-import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
@@ -18,6 +12,10 @@ import javax.swing.JOptionPane;
  * @author Jin
  */
 public class GUIClient extends javax.swing.JFrame {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -6854191562461378337L;
 	StringBuffer GSOutput = new StringBuffer();
 	StringBuffer FSOutput = new StringBuffer();
 	GroupClient groupClient = new GroupClient();
@@ -30,6 +28,7 @@ public class GUIClient extends javax.swing.JFrame {
 	byte[] fSharedKey = null;
 	PublicKey groupServerKey;
 	PublicKey fileServerKey;
+	String fileServerName = null;
 
 	/** Creates new form GUIClient */
 	public GUIClient() {
@@ -418,7 +417,7 @@ public class GUIClient extends javax.swing.JFrame {
     }// </editor-fold>
 
 	private void GSSubmitActionPerformed(java.awt.event.ActionEvent evt) {
-		token = groupClient.getToken(gSharedKey);
+		token = groupClient.getToken(gSharedKey, fileServerName);
 		String user = GSUsernameTF.getText();
 		String group = GSGroupNameTF.getText();
 		String output = "\n";
@@ -499,7 +498,9 @@ public class GUIClient extends javax.swing.JFrame {
 	}
 
 	private void FSSubmitActionPerformed(java.awt.event.ActionEvent evt) {
-		token = groupClient.getToken(fSharedKey);
+		System.out.println("getting token...");
+		token = groupClient.getToken(gSharedKey, fileServerName);
+		System.out.println("Token get successful");
 		String source = FSSourceFileTF.getText();
 		String destination = FSDestFileTF.getText();
 		String group = FSGroupNameTF.getText();
@@ -510,6 +511,7 @@ public class GUIClient extends javax.swing.JFrame {
 		else{
 			switch(FSCommand.getSelectedIndex()){
 			case 0:{
+				System.out.println("ListFile");
 				List<String> result = fileClient.listFiles(token, fSharedKey);
 				if(result != null){
 					output += "Total file: " + result.size() + "\nFile List:";
@@ -578,7 +580,7 @@ public class GUIClient extends javax.swing.JFrame {
 					int n = JOptionPane.showConfirmDialog(frame,fingerprint,title,JOptionPane.YES_NO_OPTION);
 					if(n == JOptionPane.YES_OPTION){
 						gSharedKey = Crypt.generateAESKey(128);
-						byte[] mergedData = merge(gSharedKey, usernameTF.getText(), passwordTF.getText());
+						byte[] mergedData = merge(gSharedKey, usernameTF.getText(), new String(passwordTF.getPassword()));
 						byte[] encryptedLogin = Crypt.RSAEncrypt(mergedData, groupServerKey);
 						boolean loginSuccess = groupClient.login(encryptedLogin, 128/8);
 						if(loginSuccess){
@@ -635,14 +637,56 @@ public class GUIClient extends javax.swing.JFrame {
 		else{
 			String IP = FSIPTF.getText();
 			int port = Integer.parseInt(FSPortTF.getText());
-			fileClient.connect(IP, port);
-			if(token == null){
-				output += "Connection Failed - must connect to Group Server First";
-				fileClient.disconnect();
+			if(fileClient.connect(IP, port)){
+				output += "File Server Connect Successfull\nVerifying File Server\n";
+				fileServerKey = fileClient.getPublicKey();
+				if(fileServerKey != null){
+					System.out.println("getting finger print");
+					String fingerprint = Crypt.getFingerprint(fileServerKey);
+					String title = "Please confirm File Server's Public Key Finger Print";
+					JFrame frame = new JFrame();
+					System.out.println("showing joptionpane");
+					int n = JOptionPane.showConfirmDialog(frame,fingerprint,title,JOptionPane.YES_NO_OPTION);
+					if(n == JOptionPane.YES_OPTION){
+						fSharedKey = Crypt.generateAESKey(128);
+						Random r = new Random();
+						int challenge = r.nextInt();
+						byte[] cByte = intToByteArray(challenge);
+						
+						byte[] merge = new byte[cByte.length + fSharedKey.length];
+						System.arraycopy(fSharedKey,0,merge,0,fSharedKey.length);
+						System.arraycopy(cByte,0,merge,fSharedKey.length,cByte.length);
+						
+						byte[] encryptedMerge = Crypt.RSAEncrypt(merge, fileServerKey);
+						//byte[] rChallenge = fileClient.challenge(encryptedMerge, 128/8);
+						ArrayList<Object> arr = fileClient.challenge(encryptedMerge, 128/8);
+						byte[] rChallenge = (byte[])arr.get(0);
+						String serverName = (String)arr.get(1);
+						
+						if(Arrays.equals(rChallenge, cByte)){
+							output += "Login successful.";
+							fileServerName = serverName;
+							output += "\nFile Server Name is " + fileServerName;
+							FSConnected = true;
+						}
+						else{
+							output += "Login fail.\nDisconnecting....";
+							fileClient.disconnect();
+						}
+					}
+					else{
+						output += "Public Key not recognized\nDisconnecting.....";
+						fileClient.disconnect();
+					}
+				}
+				else{
+					output += "Getting File Server Public key Failed\nDisconnecting....";
+					fileClient.disconnect();
+				}
 			}
 			else{
-				output += "File Server Connect Successfull";
-				FSConnected = true;
+				output += "Connection Failed - must connect to Group Server First";
+				fileClient.disconnect();
 			}
 		}
 		FSOutput.append(output);
@@ -726,13 +770,22 @@ public class GUIClient extends javax.swing.JFrame {
 	}
 	
 	//merge the key, username and password into byte array
-		public static byte[] merge(byte[] key, String username, String password){
-			String up = username + "\n" + password;
-			byte[] merge = new byte[key.length + up.getBytes().length];
-			System.arraycopy(key,0,merge,0,key.length);
-			System.arraycopy(up.getBytes(),0,merge,key.length,up.getBytes().length);
-			return merge;
-		}
+	public static byte[] merge(byte[] key, String username, String password){
+		String up = username + "\n" + password;
+		byte[] merge = new byte[key.length + up.getBytes().length];
+		System.arraycopy(key,0,merge,0,key.length);
+		System.arraycopy(up.getBytes(),0,merge,key.length,up.getBytes().length);
+		return merge;
+	}
+	
+	//convert int to byte array
+	public static final byte[] intToByteArray(int value) {
+	    return new byte[] {
+	            (byte)(value >>> 24),
+	            (byte)(value >>> 16),
+	            (byte)(value >>> 8),
+	            (byte)value};
+	}
 
 	// Variables declaration - do not modify
     private javax.swing.JComboBox FSCommand;
