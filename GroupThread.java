@@ -125,7 +125,7 @@ public class GroupThread extends Thread
 						String tokendata = yourToken.getTokendata();
 					 	byte[] hashed = getHash(tokendata);
 					 	byte[] signed = RSAEncrypt(hashed, privateKey);
-					 	 yourToken.setSignature(signed);
+					 	yourToken.setSignature(signed);
 						//Respond to the client. On error, the client will receive a null token
 						response = new Envelope("OK");
 						response.addObject(yourToken);

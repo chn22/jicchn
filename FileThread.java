@@ -109,6 +109,7 @@ public class FileThread extends Thread
 				// Handler to list files that this user is allowed to see
 				if(e.getMessage().equals("LFILES"))
 				{
+				    /* TODO: Write this handler */
 					if(e.getObjContents().size() < 1 || e.getObjContents().get(0) == null)
 					{
 						response = new Envelope("FAIL-BADCONTENTS");
@@ -135,7 +136,6 @@ public class FileThread extends Thread
 							}
 						 	response.addObject(list);
 						}
-						
 					}
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
@@ -162,12 +162,11 @@ public class FileThread extends Thread
 							String remotePath = (String)e.getObjContents().get(0);
 							String group = (String)e.getObjContents().get(1);
 							UserToken yourToken = (UserToken)e.getObjContents().get(2); //Extract token
-
 							if(!checkToken(yourToken)){
-							 	 System.out.println("Token not valid");
-							 	 response = new Envelope("TOKEN_NOT_VALID");
-							 	 }
-							 	 else if (FileServer.fileList.checkFile(remotePath)) {
+								System.out.println("Token not valid");
+								response = new Envelope("TOKEN_NOT_VALID");
+							}
+							else if (FileServer.fileList.checkFile(remotePath)) {
 								System.out.printf("Error: file already exists at %s\n", remotePath);
 								response = new Envelope("FAIL-FILEEXISTS"); //Success
 							}
@@ -218,10 +217,11 @@ public class FileThread extends Thread
 					Token t = (Token)e.getObjContents().get(1);
 					ShareFile sf = FileServer.fileList.getFile("/"+remotePath);
 					if(!checkToken(t)){
-					 	 System.out.println("Token not valid");
-					 	 e = new Envelope("TOKEN_NOT_VALID");
-					 	 output.writeObject(e);
-					 	 }
+						System.out.println("Token not valid");
+						e = new Envelope("TOKEN_NOT_VALID");
+						e = AESEncrypt(e, sharedKey);
+						output.writeObject(e);
+					}
 					else if (sf == null) {
 						System.out.printf("Error: File %s doesn't exist\n", remotePath);
 						e = new Envelope("ERROR_FILEMISSING");
@@ -319,11 +319,12 @@ public class FileThread extends Thread
 					Token t = (Token)e.getObjContents().get(1);
 					ShareFile sf = FileServer.fileList.getFile("/"+remotePath);
 					if(!checkToken(t)){
-					 	 System.out.println("Token not valid");
-					 	 e = new Envelope("TOKEN_NOT_VALID");
-					 	 output.writeObject(e);
-					 	 }
-					 	 else if (sf == null) {
+						System.out.println("Token not valid");
+						e = new Envelope("TOKEN_NOT_VALID");
+						e = AESEncrypt(e, sharedKey);
+						output.writeObject(e);
+					}
+					else if (sf == null) {
 						System.out.printf("Error: File %s doesn't exist\n", remotePath);
 						e = new Envelope("ERROR_DOESNTEXIST");
 					}
