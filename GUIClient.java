@@ -498,7 +498,9 @@ public class GUIClient extends javax.swing.JFrame {
 	}
 
 	private void FSSubmitActionPerformed(java.awt.event.ActionEvent evt) {
-		token = groupClient.getToken(fSharedKey, fileServerName);
+		System.out.println("getting token...");
+		token = groupClient.getToken(gSharedKey, fileServerName);
+		System.out.println("Token get successful");
 		String source = FSSourceFileTF.getText();
 		String destination = FSDestFileTF.getText();
 		String group = FSGroupNameTF.getText();
@@ -509,6 +511,7 @@ public class GUIClient extends javax.swing.JFrame {
 		else{
 			switch(FSCommand.getSelectedIndex()){
 			case 0:{
+				System.out.println("ListFile");
 				List<String> result = fileClient.listFiles(token, fSharedKey);
 				if(result != null){
 					output += "Total file: " + result.size() + "\nFile List:";
@@ -663,6 +666,7 @@ public class GUIClient extends javax.swing.JFrame {
 						if(Arrays.equals(rChallenge, cByte)){
 							output += "Login successful.";
 							fileServerName = serverName;
+							output += "\nFile Server Name is " + fileServerName;
 							FSConnected = true;
 						}
 						else{
