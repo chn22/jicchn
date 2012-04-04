@@ -9,17 +9,19 @@ public class Token implements UserToken,java.io.Serializable{
 	 */
 	private static final long serialVersionUID = 1L;
 	String serverName, username;
-	Date timestamp;
+	//Date timestamp;
 	ArrayList<String> userGroups = new ArrayList<String>();
+	String fileServerName;
 	byte[] signature;
 	
-	public Token(String serverName, String username, ArrayList<String> userGroups, Date timestamp){
+	public Token(String serverName, String username, ArrayList<String> userGroups, String fileServerName){//Date timestamp){
 		// TODO complete here
 		this.serverName = serverName;
 		this.username = username;
 		this.userGroups = userGroups;
 		sort(this.userGroups);
-		this.timestamp = timestamp;
+		this.fileServerName = fileServerName;
+		//this.timestamp = timestamp;
 		signature = null;
 	}
 
@@ -41,13 +43,15 @@ public class Token implements UserToken,java.io.Serializable{
 		return userGroups;
 	}
 	
+	/*
 	public Date getTimestamp(){
 		return timestamp;
 	}
-	
+	*/
 	//get the combined string of all token data
 	public String getTokendata(){
-		return serverName + username + timestamp.toString() + userGroups.toString();
+		//return serverName + username + timestamp.toString() + userGroups.toString();
+		return serverName + username + userGroups.toString() + fileServerName;
 	}
 	
 	public void setSignature(byte[] bytes){
@@ -58,6 +62,9 @@ public class Token implements UserToken,java.io.Serializable{
 		return signature;
 	}
 	
+	public String getFileServerName(){
+		return fileServerName;
+	}
 	//sort the arraylist
 	public void sort(ArrayList<String> list){
 		String small;

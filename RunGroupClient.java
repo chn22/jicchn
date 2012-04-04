@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.Security;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -36,7 +37,7 @@ public class RunGroupClient{
 	static PublicKey fileServerKey = null;
 	private static SecretKey gSharedKey = null;
 	private static SecretKey fSharedKey = null;
-	
+	static String fileServerName = null;
 	
 	public static final byte[] intToByteArray(int value) {
 	    return new byte[] {
@@ -246,7 +247,7 @@ public class RunGroupClient{
 		
 		//loop to wait for command
 		do{
-			//token = groupClient.getToken();
+			token = groupClient.getToken(gSharedKey.getEncoded(), fileServerName);
 			try{
 				System.out.println("Enter command, or type \"DISCONNECT\" to disconnect from groupserver.");
 				System.out.print(" > ");	
@@ -377,9 +378,9 @@ public class RunGroupClient{
 			else if(input.toUpperCase().equals("DISCONNECT")){
 				if(FSConnected)
 				{
-					fileClient.disconnect();
+					fileClient.disconnect(fSharedKey.getEncoded());
 				}
-				groupClient.disconnect();
+				groupClient.disconnect(gSharedKey.getEncoded());
 			}
 			else if(input.toUpperCase().equals("FSCONNECT"))
 			{
@@ -418,7 +419,7 @@ public class RunGroupClient{
 								System.out.println("Enter 'yes' to continue or 'no' to disconnect > ");
 								input = in.readLine();
 								if(!input.toLowerCase().equals("yes") && !input.toLowerCase().equals("y")){
-									fileClient.disconnect();
+									fileClient.disconnect(gSharedKey.getEncoded());
 									FSConnected = false;
 									System.out.println("Successfully disconnected from File Server");
 								}
@@ -437,13 +438,18 @@ public class RunGroupClient{
 								System.arraycopy(cByte,0,merge,fByte.length,cByte.length);
 								
 								byte[] encryptedMerge = RSAEncrypt(merge, fileServerKey);
-								byte[] rChallenge = fileClient.challenge(encryptedMerge, 128/8);
+								//byte[] rChallenge = fileClient.challenge(encryptedMerge, 128/8);
+								ArrayList<Object> arr = fileClient.challenge(encryptedMerge, 128/8);
+								byte[] rChallenge = (byte[])arr.get(0);
+								String serverName = (String)arr.get(1);
 								
 								if(Arrays.equals(rChallenge, cByte)){
 									System.out.println("File Server challenge success. Connection success.");
+									System.out.println("File Server Name: " + serverName);
+									fileServerName = serverName;
 								}
 								else{
-									fileClient.disconnect();
+									fileClient.disconnect(gSharedKey.getEncoded());
 									FSConnected = false;
 									System.out.println("File Server challenge fail. Connection closed.");
 								}
@@ -465,6 +471,7 @@ public class RunGroupClient{
 					System.out.println("Already Connected to File Server");
 				}
 			}
+			
 			else if(input.toUpperCase().equals("FSDISCONNECT"))
 			{
 				if(!FSConnected)
@@ -473,7 +480,7 @@ public class RunGroupClient{
 				}
 				else
 				{
-					fileClient.disconnect();
+					fileClient.disconnect(fSharedKey.getEncoded());
 					FSConnected = false;
 					System.out.println("Successfully disconnected from File Server");
 				}

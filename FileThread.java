@@ -7,6 +7,9 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,13 +29,17 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 public class FileThread extends Thread
 {
 	private final Socket socket;
+	private ArrayList<Date> timestamps = new ArrayList<Date>();	
+	private PublicKey gspublicKey;
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private byte[] sharedKey;
+	private String serverName;
 	
-	public FileThread(Socket _socket)
+	public FileThread(Socket _socket, String serverName)
 	{
 		socket = _socket;
+		this.serverName = serverName;
 	}
 
 	public void run()
@@ -45,43 +52,53 @@ public class FileThread extends Thread
 			final ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
 			Envelope response;
 			
+			ObjectInputStream inStream;
+			inStream = new ObjectInputStream(new FileInputStream("ALPHA.public")); 	
+		    gspublicKey = (PublicKey)inStream.readObject();
+		 	inStream.close();
+			
 			Security.addProvider(new BouncyCastleProvider());
 			
 			//load public and private key pair
-			ObjectInputStream inStream;
-			inStream = new ObjectInputStream(new FileInputStream("FilePile" + ".public"));
+			inStream = new ObjectInputStream(new FileInputStream(serverName + ".public"));
 			publicKey = (PublicKey)inStream.readObject();
 			inStream.close();
-			inStream = new ObjectInputStream(new FileInputStream("FilePile" + ".private"));
+			inStream = new ObjectInputStream(new FileInputStream(serverName + ".private"));
 			privateKey = (PrivateKey)inStream.readObject();
 			inStream.close();
-
-			Envelope env = (Envelope)input.readObject();
-			if(env.getMessage().equals("FSPUBLIC"))//Client requests server's public key
-			{
-				try{
-					response = new Envelope("OK");
-					response.addObject(publicKey);
-					output.writeObject(response);
-				}catch(Exception ex){
-					System.err.println(ex);
+			try{
+				Envelope env = (Envelope)input.readObject();
+				if(env.getMessage().equals("FSPUBLIC"))//Client requests server's public key
+				{
+					try{
+						response = new Envelope("OK");
+						response.addObject(publicKey);
+						output.writeObject(response);
+					}catch(Exception ex){
+						System.err.println(ex);
+					}
 				}
-			}
-			env = (Envelope)input.readObject();
-			if(env.getMessage().equals("CHALLENGE"))//Client requests server's public key
-			{
-				try{
-					response = new Envelope("OK");
-					byte[] challenge = (byte[])env.getObjContents().get(0);
-					byte[] deChallenge = RSADecrypt(challenge, privateKey);
-					int keySize = (Integer)env.getObjContents().get(1);
-					byte[] c = new byte[deChallenge.length - keySize];
-					System.arraycopy(deChallenge, keySize, c, 0, c.length);
-					response.addObject(c);
-					output.writeObject(response);
-				}catch(Exception ex){
-					ex.printStackTrace();
+				env = (Envelope)input.readObject();
+				if(env.getMessage().equals("CHALLENGE"))//Client requests server's public key
+				{
+					try{
+						response = new Envelope("OK");
+						byte[] challenge = (byte[])env.getObjContents().get(0);
+						byte[] deChallenge = RSADecrypt(challenge, privateKey);
+						int keySize = (Integer)env.getObjContents().get(1);
+						byte[] c = new byte[deChallenge.length - keySize];
+						System.arraycopy(deChallenge, keySize, c, 0, c.length);
+						response.addObject(c);
+						response.addObject(serverName);
+						output.writeObject(response);
+						sharedKey = new byte[keySize];
+						System.arraycopy(deChallenge, 0, sharedKey, 0, sharedKey.length);
+					}catch(Exception ex){
+						ex.printStackTrace();
+					}
 				}
+			}catch(Exception ex){
+				System.out.println("Client disconnected.");
 			}
 			
 			do
@@ -99,19 +116,26 @@ public class FileThread extends Thread
 					else
 					{
 						UserToken yourToken = (UserToken)e.getObjContents().get(0); //Extract token 
-						response = new Envelope("OK");
-						List<String> list = new ArrayList<String>();
-						for(int i = 0; i < FileServer.fileList.getFiles().size(); i++)
-						{
-							for(int j = 0; j < yourToken.getGroups().size(); j++)
+						if(!checkToken(yourToken)){
+							System.out.println("Token not valid");
+							response = new Envelope("TOKEN_NOT_VALID");
+						 }
+						 	 else{
+						 	 response = new Envelope("OK");
+						 	 List<String> list = new ArrayList<String>();
+						 	 for(int i = 0; i < FileServer.fileList.getFiles().size(); i++)
 							{
-								if(FileServer.fileList.getFiles().get(i).getGroup().equals(yourToken.getGroups().get(j)))
+						 		for(int j = 0; j < yourToken.getGroups().size(); j++)
 								{
-									list.add(FileServer.fileList.getFiles().get(i).getPath());
+						 			 if(FileServer.fileList.getFiles().get(i).getGroup().equals(yourToken.getGroups().get(j)))
+						 			 	 {
+						 			 	 list.add(FileServer.fileList.getFiles().get(i).getPath());
+						 			 	 }
 								}
 							}
+						 	response.addObject(list);
 						}
-						response.addObject(list);
+						
 					}
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
@@ -139,7 +163,11 @@ public class FileThread extends Thread
 							String group = (String)e.getObjContents().get(1);
 							UserToken yourToken = (UserToken)e.getObjContents().get(2); //Extract token
 
-							if (FileServer.fileList.checkFile(remotePath)) {
+							if(!checkToken(yourToken)){
+							 	 System.out.println("Token not valid");
+							 	 response = new Envelope("TOKEN_NOT_VALID");
+							 	 }
+							 	 else if (FileServer.fileList.checkFile(remotePath)) {
 								System.out.printf("Error: file already exists at %s\n", remotePath);
 								response = new Envelope("FAIL-FILEEXISTS"); //Success
 							}
@@ -189,7 +217,12 @@ public class FileThread extends Thread
 					String remotePath = (String)e.getObjContents().get(0);
 					Token t = (Token)e.getObjContents().get(1);
 					ShareFile sf = FileServer.fileList.getFile("/"+remotePath);
-					if (sf == null) {
+					if(!checkToken(t)){
+					 	 System.out.println("Token not valid");
+					 	 e = new Envelope("TOKEN_NOT_VALID");
+					 	 output.writeObject(e);
+					 	 }
+					else if (sf == null) {
 						System.out.printf("Error: File %s doesn't exist\n", remotePath);
 						e = new Envelope("ERROR_FILEMISSING");
 						e = AESEncrypt(e, sharedKey);
@@ -285,7 +318,12 @@ public class FileThread extends Thread
 					String remotePath = (String)e.getObjContents().get(0);
 					Token t = (Token)e.getObjContents().get(1);
 					ShareFile sf = FileServer.fileList.getFile("/"+remotePath);
-					if (sf == null) {
+					if(!checkToken(t)){
+					 	 System.out.println("Token not valid");
+					 	 e = new Envelope("TOKEN_NOT_VALID");
+					 	 output.writeObject(e);
+					 	 }
+					 	 else if (sf == null) {
 						System.out.printf("Error: File %s doesn't exist\n", remotePath);
 						e = new Envelope("ERROR_DOESNTEXIST");
 					}
@@ -451,5 +489,42 @@ public class FileThread extends Thread
 		ois.close();
 		bis.close();
 		return e;
+	}
+	
+	private void clearTimestamps(){
+	 	 Date now = new Date();
+	 	 Calendar calendar = Calendar.getInstance();
+	 	 calendar.setTime(now);
+	 	 calendar.add(Calendar.MINUTE, -5);
+	 	 Date fiveAgo = calendar.getTime();
+	 	 for(int i = 0; i < timestamps.size(); i++){
+	 		 Date date = timestamps.get(i);
+	 	   if(date.compareTo(fiveAgo) < 0)
+	 	     timestamps.remove(i);
+	 	 }
+	}
+	private boolean checkTimestamp(Date d){
+	 	 Date now = new Date();
+	 	 Calendar calendar = Calendar.getInstance();
+	 	 calendar.setTime(now);
+	 	 calendar.add(Calendar.MINUTE, -5);
+	 	 Date fiveAgo = calendar.getTime();
+	 	 System.out.println(now);
+	 	 System.out.println(fiveAgo);
+	 	 if(d.compareTo(fiveAgo) < 0)
+	 	   return false;
+	 	 for(Date date : timestamps){
+	 	   if(d.compareTo(date) == 0)
+	 	     return false;
+	 	 }
+	 	 timestamps.add(d);
+	 	 return true;
+	 	 }
+	private boolean checkToken(UserToken token){
+	 	 String tokendata = token.getTokendata();
+	 	 byte[] hashed = getHash(tokendata);
+	 	 byte[] signed = token.getSignature();
+	 	 byte[] compare = RSADecrypt(signed, gspublicKey);
+	 	 return Arrays.equals(hashed,compare) && token.getFileServerName().equals(serverName);
 	}
 }

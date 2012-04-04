@@ -57,15 +57,19 @@ public class FileClient extends Client implements FileClientInterface {
 		}
 	}
 	
-	public byte[] challenge(byte[] challenge, int keySize){
+	public ArrayList<Object> challenge(byte[] challenge, int keySize){
 		Envelope env = new Envelope("CHALLENGE");
 	    env.addObject(challenge);
 	    env.addObject(keySize);
 	    try {
 			output.writeObject(env);
 			Envelope e = (Envelope)input.readObject();
+			ArrayList<Object> arr = new ArrayList<Object>();
 			byte[] challengeReturn = (byte[])e.getObjContents().get(0);
-			return challengeReturn;
+			arr.add(challengeReturn);
+			String serverName = (String)e.getObjContents().get(1);
+			arr.add(serverName);
+			return arr;
 	    }catch(Exception e){
 	    	e.printStackTrace();
 	    }
