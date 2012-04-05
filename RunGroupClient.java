@@ -8,6 +8,7 @@ import java.security.PublicKey;
 import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
@@ -174,6 +175,7 @@ public class RunGroupClient{
 		String input = null;
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		UserToken token = null;
+		Hashtable<String, ArrayList<byte[]>> versionKeys = null;
 		//connect to the group server
 		if(groupClient.connect(groupServerAddress,groupServerPort)){
 			System.out.println("connection success.");
@@ -249,6 +251,7 @@ public class RunGroupClient{
 		//loop to wait for command
 		do{
 			token = groupClient.getToken(gSharedKey.getEncoded(), fileServerName);
+			versionKeys = groupClient.getVersionKeys(gSharedKey.getEncoded());
 			//token = groupClient.getToken(usert);
 			//token = groupClient.getToken(gSharedKey.getEncoded());
 			try{
@@ -528,7 +531,7 @@ public class RunGroupClient{
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					boolean result = fileClient.upload(sourceFile, destFile, group, token, fSharedKey.getEncoded());
+					boolean result = fileClient.upload(sourceFile, destFile, group, token, fSharedKey.getEncoded(), versionKeys.get(group));
 					if(result){
 						System.out.println("Upload Success");
 					}

@@ -125,6 +125,19 @@ public class Crypt {
 		}
 		return envelope;
 	}
+	
+	public static byte[] AESEncrypt(byte[] b, byte[] key){
+		Security.addProvider(new BouncyCastleProvider());
+		SecretKeySpec skeyspec = new SecretKeySpec(key, "AES");
+		try{
+			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS7Padding", "BC");
+			cipher.init(Cipher.ENCRYPT_MODE, skeyspec);
+			return cipher.doFinal(b);
+		}catch(Exception e){
+			System.out.println(e);
+		}
+		return null;
+	}
 
 	//Decrypt the content in the envelope with IV
 	public static Envelope AESDecrypt(Envelope envelope, byte[] key){
@@ -144,7 +157,19 @@ public class Crypt {
 		}
 		return en;
 	}
-
+	
+	public static byte[] AESDecrypt(byte[] b, byte[] key){
+		Security.addProvider(new BouncyCastleProvider());
+		SecretKeySpec skeyspec = new SecretKeySpec(key, "AES");
+		try{
+			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS7Padding", "BC");
+			cipher.init(Cipher.DECRYPT_MODE, skeyspec);
+			return cipher.doFinal(b);
+		}catch(Exception e){
+			System.out.println(e);
+		}
+		return null;
+	}
 	//Convert Envelope Object into byte arrays
 	private static byte[] getBytes(Envelope e) throws java.io.IOException{
 		Security.addProvider(new BouncyCastleProvider());

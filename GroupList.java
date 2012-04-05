@@ -53,7 +53,19 @@ import java.util.*;
 		{
 			list.get(group).removeMember(username);
 		}
-	
+		
+		public synchronized void addVersionKey(String group, byte[] key){
+			list.get(group).addVersionKey(key);
+		}
+		
+		public synchronized int getCurrent(String group){
+			return list.get(group).getCurrent();
+		}
+		
+		public synchronized ArrayList<byte[]> getVersionKeys(String group){
+			return list.get(group).getVersionKeys();
+		}
+		
 	class Group implements java.io.Serializable {
 
 		/**
@@ -61,10 +73,12 @@ import java.util.*;
 		 */
 		private static final long serialVersionUID = -6699986336399821598L;
 		private ArrayList<String> members;
+		private ArrayList<byte[]> versionKey;
 		
 		public Group()
 		{
 			members = new ArrayList<String>();
+			versionKey = new ArrayList<byte[]>();
 		}
 		
 		public ArrayList<String> getMembers()
@@ -92,6 +106,22 @@ import java.util.*;
 			{
 				return false;
 			}
+		}
+		
+		public byte[] getVersionKey(int n){
+			return versionKey.get(n);
+		}
+		
+		public ArrayList<byte[]> getVersionKeys(){
+			return versionKey;
+		}
+		
+		public int getCurrent(){
+			return versionKey.size();
+		}
+		
+		public void addVersionKey(byte[] key){
+			versionKey.add(key);
 		}
 	}
 	

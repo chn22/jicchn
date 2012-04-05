@@ -1,4 +1,5 @@
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -56,7 +57,7 @@ public interface FileClientInterface
      *
      */
     public boolean upload(final String sourceFile, final String destFile, final String group, 
-    		final UserToken token, final byte[] sKey);
+    		final UserToken token, final byte[] sKey, final ArrayList<byte[]> keys);
 
 
     /**

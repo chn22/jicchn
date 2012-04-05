@@ -6,6 +6,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.List;
 
 import javax.crypto.Cipher;
@@ -29,6 +30,105 @@ public class GroupClient extends Client implements GroupClientInterface {
 		super.disconnect(key, outCounter++);
 	}
 	
+	@SuppressWarnings("unchecked")
+	public Hashtable<String, ArrayList<byte[]>> getVersionKeys(byte[] sKey)
+	 {
+		try
+		{
+			//UserToken token = null;
+			Hashtable<String, ArrayList<byte[]>> versionKeys;
+			Envelope message = null, response = null;
+		 		 	
+			//Tell the server to return a token.
+			message = new Envelope("KEYS");
+			//message.addObject(groupName);
+			message.setNumber(outCounter++);
+			Envelope m = AESEncrypt(message, sKey);
+			output.writeObject(m);
+			//Get the response from the server
+			
+			response = (Envelope)input.readObject();
+			Envelope e = AESDecrypt(response, sKey);
+			if(e.getNumber() != inCounter++){
+				 System.out.println("message order incorrect.\nConnection terminated.");
+				 System.exit(1);
+			 }
+			//Successful response
+			if(e.getMessage().equals("OK"))
+				
+			{
+				//If there is a token in the Envelope, return it 
+				ArrayList<Object> temp = null;
+				temp = e.getObjContents();
+				
+				if(temp.size() == 1)
+				{
+					versionKeys = (Hashtable<String, ArrayList<byte[]>>)temp.get(0);
+					if(versionKeys != null)
+					return versionKeys;
+				}
+			}
+			
+			return null;
+		}
+		catch(Exception e)
+		{
+			System.err.println("Error: " + e.getMessage());
+			e.printStackTrace(System.err);
+			return null;
+		}
+		
+	 }
+	
+	@SuppressWarnings("unchecked")
+	public ArrayList<byte[]> getVersionKey(byte[] sKey, String groupName)
+	 {
+		try
+		{
+			//UserToken token = null;
+			ArrayList<byte[]> versionKeys;
+			Envelope message = null, response = null;
+		 		 	
+			//Tell the server to return a token.
+			message = new Envelope("VERSION");
+			message.addObject(groupName);
+			message.setNumber(outCounter++);
+			Envelope m = AESEncrypt(message, sKey);
+			output.writeObject(m);
+			//Get the response from the server
+			
+			response = (Envelope)input.readObject();
+			Envelope e = AESDecrypt(response, sKey);
+			if(e.getNumber() != inCounter++){
+				 System.out.println("message order incorrect.\nConnection terminated.");
+				 System.exit(1);
+			 }
+			//Successful response
+			if(e.getMessage().equals("OK"))
+				
+			{
+				//If there is a token in the Envelope, return it 
+				ArrayList<Object> temp = null;
+				temp = e.getObjContents();
+				
+				if(temp.size() == 1)
+				{
+					versionKeys= (ArrayList<byte[]>)temp.get(0);
+					if(versionKeys != null)
+					return versionKeys;
+				}
+			}
+			
+			return null;
+		}
+		catch(Exception e)
+		{
+			System.err.println("Error: " + e.getMessage());
+			e.printStackTrace(System.err);
+			return null;
+		}
+		
+	 }
 	public PublicKey getPublicKey(){
 		try
 		{

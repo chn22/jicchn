@@ -193,6 +193,7 @@ public class FileThread extends Thread
 							String remotePath = (String)e.getObjContents().get(0);
 							String group = (String)e.getObjContents().get(1);
 							UserToken yourToken = (UserToken)e.getObjContents().get(2); //Extract token
+							int version = (Integer)e.getObjContents().get(3);
 							if(!checkToken(yourToken)){
 								System.out.println("Token not valid");
 								response = new Envelope("TOKEN_NOT_VALID");
@@ -238,7 +239,7 @@ public class FileThread extends Thread
 
 								if(e.getMessage().compareTo("EOF")==0) {
 									System.out.printf("Transfer successful file %s\n", remotePath);
-									FileServer.fileList.addFile(yourToken.getSubject(), group, remotePath);
+									FileServer.fileList.addFile(yourToken.getSubject(), group, remotePath, version);
 									response = new Envelope("OK"); //Success
 								}
 								else {

@@ -251,7 +251,7 @@ public class FileClient extends Client implements FileClientInterface {
 	}
 
 	public boolean upload(String sourceFile, String destFile, String group,
-			UserToken token, byte[] sKey) {
+			UserToken token, byte[] sKey, ArrayList<byte[]> versionKeys) {
 			
 		if (destFile.charAt(0)!='/') {
 			 destFile = "/" + destFile;
@@ -270,6 +270,7 @@ public class FileClient extends Client implements FileClientInterface {
 			message.addObject(destFile);
 			message.addObject(group);
 			message.addObject(token); //Add requester's token
+			message.addObject(versionKeys.size());
 			message.setNumber(outCounter++);
 			Envelope m = AESEncrypt(message, sKey);
 			output.writeObject(m);
@@ -309,7 +310,8 @@ public class FileClient extends Client implements FileClientInterface {
 					System.out.println("Read error");
 					return false;
 				}
-
+				//byte[] key = versionKeys.get(versionKeys.size());
+				//buf = Crypt.AESEncrypt(buf, key);
 				message.addObject(buf);
 				message.addObject(new Integer(n));
 				message.setNumber(outCounter++);
