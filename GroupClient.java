@@ -6,6 +6,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.List;
 
 import javax.crypto.Cipher;
@@ -13,7 +14,121 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class GroupClient extends Client implements GroupClientInterface {
+	int inCounter;
+	int outCounter;
+	
+	public GroupClient(){
+		inCounter = 0;
+		outCounter = 0;
+	}
  
+	public void disconnect(){
+		super.disconnect(outCounter++);
+	}
+	
+	public void disconnect(byte[] key){
+		super.disconnect(key, outCounter++);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public Hashtable<String, ArrayList<byte[]>> getVersionKeys(byte[] sKey)
+	 {
+		try
+		{
+			//UserToken token = null;
+			Hashtable<String, ArrayList<byte[]>> versionKeys;
+			Envelope message = null, response = null;
+		 		 	
+			//Tell the server to return a token.
+			message = new Envelope("KEYS");
+			//message.addObject(groupName);
+			message.setNumber(outCounter++);
+			Envelope m = AESEncrypt(message, sKey);
+			output.writeObject(m);
+			//Get the response from the server
+			
+			response = (Envelope)input.readObject();
+			Envelope e = AESDecrypt(response, sKey);
+			if(e.getNumber() != inCounter++){
+				 System.out.println("message order incorrect.\nConnection terminated.");
+				 System.exit(1);
+			 }
+			//Successful response
+			if(e.getMessage().equals("OK"))
+				
+			{
+				//If there is a token in the Envelope, return it 
+				ArrayList<Object> temp = null;
+				temp = e.getObjContents();
+				
+				if(temp.size() == 1)
+				{
+					versionKeys = (Hashtable<String, ArrayList<byte[]>>)temp.get(0);
+					if(versionKeys != null)
+					return versionKeys;
+				}
+			}
+			
+			return null;
+		}
+		catch(Exception e)
+		{
+			System.err.println("Error: " + e.getMessage());
+			e.printStackTrace(System.err);
+			return null;
+		}
+		
+	 }
+	
+	@SuppressWarnings("unchecked")
+	public ArrayList<byte[]> getVersionKey(byte[] sKey, String groupName)
+	 {
+		try
+		{
+			//UserToken token = null;
+			ArrayList<byte[]> versionKeys;
+			Envelope message = null, response = null;
+		 		 	
+			//Tell the server to return a token.
+			message = new Envelope("VERSION");
+			message.addObject(groupName);
+			message.setNumber(outCounter++);
+			Envelope m = AESEncrypt(message, sKey);
+			output.writeObject(m);
+			//Get the response from the server
+			
+			response = (Envelope)input.readObject();
+			Envelope e = AESDecrypt(response, sKey);
+			if(e.getNumber() != inCounter++){
+				 System.out.println("message order incorrect.\nConnection terminated.");
+				 System.exit(1);
+			 }
+			//Successful response
+			if(e.getMessage().equals("OK"))
+				
+			{
+				//If there is a token in the Envelope, return it 
+				ArrayList<Object> temp = null;
+				temp = e.getObjContents();
+				
+				if(temp.size() == 1)
+				{
+					versionKeys= (ArrayList<byte[]>)temp.get(0);
+					if(versionKeys != null)
+					return versionKeys;
+				}
+			}
+			
+			return null;
+		}
+		catch(Exception e)
+		{
+			System.err.println("Error: " + e.getMessage());
+			e.printStackTrace(System.err);
+			return null;
+		}
+		
+	 }
 	public PublicKey getPublicKey(){
 		try
 		{
@@ -22,9 +137,14 @@ public class GroupClient extends Client implements GroupClientInterface {
 		 		 	
 			//Tell the server to return the public key.
 			message = new Envelope("GSPUBLIC");
+			message.setNumber(outCounter++);
 			output.writeObject(message);
 			//Get the response from the server
 			response = (Envelope)input.readObject();
+			if(response.getNumber() != inCounter++){
+				System.out.println("message order incorrect.\nConnection terminated.");
+				System.exit(1);
+			}
 			
 			//Successful response
 			if(response.getMessage().equals("OK"))
@@ -58,10 +178,15 @@ public class GroupClient extends Client implements GroupClientInterface {
 			
 			 message = new Envelope("LOGIN");
 			 message.addObject(credential); 
-			 message.addObject(keySize); 
+			 message.addObject(keySize);
+			 message.setNumber(outCounter++);
 			 output.writeObject(message);
 		
 			 response = (Envelope)input.readObject();
+			 if(response.getNumber() != inCounter++){
+				 System.out.println("message order incorrect.\nConnection terminated.");
+				 System.exit(1);
+			 }
 			 
 			 if(response.getMessage().equals("OK"))
 			 {
@@ -86,13 +211,17 @@ public class GroupClient extends Client implements GroupClientInterface {
 			//Tell the server to return a token.
 			message = new Envelope("GET");
 			message.addObject(fileServerName);
+			message.setNumber(outCounter++);
 			Envelope m = AESEncrypt(message, sKey);
 			output.writeObject(m);
 			//Get the response from the server
 			
 			response = (Envelope)input.readObject();
 			Envelope e = AESDecrypt(response, sKey);
-			
+			if(e.getNumber() != inCounter++){
+				 System.out.println("message order incorrect.\nConnection terminated.");
+				 System.exit(1);
+			 }
 			//Successful response
 			if(e.getMessage().equals("OK"))
 				
@@ -129,11 +258,16 @@ public class GroupClient extends Client implements GroupClientInterface {
 			 message = new Envelope("CUSER");
 			 message.addObject(username); //Add user name string
 			 message.addObject(token); //Add the requester's token
+			 message.setNumber(outCounter++);
 			 Envelope m = AESEncrypt(message, sKey);
 			 output.writeObject(m);
 		
 			 response = (Envelope)input.readObject();
 			 Envelope e = AESDecrypt(response, sKey);
+			 if(e.getNumber() != inCounter++){
+				 System.out.println("message order incorrect.\nConnection terminated.");
+				 System.exit(1);
+			 }
 			 //If server indicates success, return true
 			 if(e.getMessage().equals("OK"))
 			 {
@@ -159,11 +293,16 @@ public class GroupClient extends Client implements GroupClientInterface {
 				message = new Envelope("DUSER");
 				message.addObject(username); //Add user name
 				message.addObject(token);  //Add requester's token
+				message.setNumber(outCounter++);
 				Envelope m = AESEncrypt(message, sKey);
 				output.writeObject(m);
 			
 				response = (Envelope)input.readObject();
 				Envelope e = AESDecrypt(response, sKey);
+				if(e.getNumber() != inCounter++){
+					 System.out.println("message order incorrect.\nConnection terminated.");
+					 System.exit(1);
+				 }
 				//If server indicates success, return true
 				if(e.getMessage().equals("OK"))
 				{
@@ -189,11 +328,16 @@ public class GroupClient extends Client implements GroupClientInterface {
 				message = new Envelope("CGROUP");
 				message.addObject(groupname); //Add the group name string
 				message.addObject(token); //Add the requester's token
+				message.setNumber(outCounter++);
 				Envelope m = AESEncrypt(message, sKey);
 				output.writeObject(m); 
 			
 				response = (Envelope)input.readObject();
 				Envelope e = AESDecrypt(response, sKey);
+				if(e.getNumber() != inCounter++){
+					 System.out.println("message order incorrect.\nConnection terminated.");
+					 System.exit(1);
+				 }
 				//If server indicates success, return true
 				if(e.getMessage().equals("OK"))
 				{
@@ -219,11 +363,16 @@ public class GroupClient extends Client implements GroupClientInterface {
 				message = new Envelope("DGROUP");
 				message.addObject(groupname); //Add group name string
 				message.addObject(token); //Add requester's token
+				message.setNumber(outCounter++);
 				Envelope m = AESEncrypt(message, sKey);
 				output.writeObject(m); 
 			
 				response = (Envelope)input.readObject();
 				Envelope e = AESDecrypt(response, sKey);
+				if(e.getNumber() != inCounter++){
+					 System.out.println("message order incorrect.\nConnection terminated.");
+					 System.exit(1);
+				 }
 				//If server indicates success, return true
 				if(e.getMessage().equals("OK"))
 				{
@@ -250,11 +399,16 @@ public class GroupClient extends Client implements GroupClientInterface {
 			 message = new Envelope("LMEMBERS");
 			 message.addObject(group); //Add group name string
 			 message.addObject(token); //Add requester's token
+			 message.setNumber(outCounter++);
 			 Envelope m = AESEncrypt(message, sKey);
 			 output.writeObject(m); 
 			 
 			 response = (Envelope)input.readObject();
 			 Envelope e = AESDecrypt(response, sKey);
+			 if(e.getNumber() != inCounter++){
+				 System.out.println("message order incorrect.\nConnection terminated.");
+				 System.exit(1);
+			 }
 			 //If server indicates success, return the member list
 			 if(e.getMessage().equals("OK"))
 			 {
@@ -282,11 +436,16 @@ public class GroupClient extends Client implements GroupClientInterface {
 				message.addObject(username); //Add user name string
 				message.addObject(groupname); //Add group name string
 				message.addObject(token); //Add requester's token
+				message.setNumber(outCounter++);
 				Envelope m = AESEncrypt(message, sKey);
 				output.writeObject(m); 
 			
 				response = (Envelope)input.readObject();
 				Envelope e = AESDecrypt(response, sKey);
+				if(e.getNumber() != inCounter++){
+					 System.out.println("message order incorrect.\nConnection terminated.");
+					 System.exit(1);
+				 }
 				//If server indicates success, return true
 				if(e.getMessage().equals("OK"))
 				{
@@ -313,11 +472,16 @@ public class GroupClient extends Client implements GroupClientInterface {
 				message.addObject(username); //Add user name string
 				message.addObject(groupname); //Add group name string
 				message.addObject(token); //Add requester's token
+				message.setNumber(outCounter++);
 				Envelope m = AESEncrypt(message, sKey);
 				output.writeObject(m);
 			
 				response = (Envelope)input.readObject();
 				Envelope e = AESDecrypt(response, sKey);
+				if(e.getNumber() != inCounter++){
+					 System.out.println("message order incorrect.\nConnection terminated.");
+					 System.exit(1);
+				 }
 				//If server indicates success, return true
 				if(e.getMessage().equals("OK"))
 				{

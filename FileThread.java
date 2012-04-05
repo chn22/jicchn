@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Hashtable;
 import java.util.List;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -35,11 +36,15 @@ public class FileThread extends Thread
 	private PrivateKey privateKey;
 	private byte[] sharedKey;
 	private String serverName;
+	private int inCounter;
+	private int outCounter;
 	
 	public FileThread(Socket _socket, String serverName)
 	{
 		socket = _socket;
 		this.serverName = serverName;
+		inCounter = 0;
+		outCounter = 0;
 	}
 
 	public void run()
@@ -68,17 +73,26 @@ public class FileThread extends Thread
 			inStream.close();
 			try{
 				Envelope env = (Envelope)input.readObject();
+				if(env.getNumber() != inCounter++){
+					 System.out.println("message order incorrect.\nConnection terminated.");
+					 System.exit(1);
+				}
 				if(env.getMessage().equals("FSPUBLIC"))//Client requests server's public key
 				{
 					try{
 						response = new Envelope("OK");
 						response.addObject(publicKey);
+						response.setNumber(outCounter++);
 						output.writeObject(response);
 					}catch(Exception ex){
 						System.err.println(ex);
 					}
 				}
 				env = (Envelope)input.readObject();
+				if(env.getNumber() != inCounter++){
+					 System.out.println("message order incorrect.\nConnection terminated.");
+					 System.exit(1);
+				}
 				if(env.getMessage().equals("CHALLENGE"))//Client requests server's public key
 				{
 					try{
@@ -90,6 +104,7 @@ public class FileThread extends Thread
 						System.arraycopy(deChallenge, keySize, c, 0, c.length);
 						response.addObject(c);
 						response.addObject(serverName);
+						response.setNumber(outCounter++);
 						output.writeObject(response);
 						sharedKey = new byte[keySize];
 						System.arraycopy(deChallenge, 0, sharedKey, 0, sharedKey.length);
@@ -117,6 +132,10 @@ public class FileThread extends Thread
 					break;
 				}
 				Envelope e = AESDecrypt(en, sharedKey);
+				if(e.getNumber() != inCounter++){
+					 System.out.println("message order incorrect.\nConnection terminated.");
+					 System.exit(1);
+				}
 				System.out.println("Request received: " + e.getMessage());
 				// Handler to list files that this user is allowed to see
 				if(e.getMessage().equals("LFILES"))
@@ -149,6 +168,7 @@ public class FileThread extends Thread
 						 	response.addObject(list);
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -174,6 +194,7 @@ public class FileThread extends Thread
 							String remotePath = (String)e.getObjContents().get(0);
 							String group = (String)e.getObjContents().get(1);
 							UserToken yourToken = (UserToken)e.getObjContents().get(2); //Extract token
+							int version = (Integer)e.getObjContents().get(3);
 							if(!checkToken(yourToken)){
 								System.out.println("Token not valid");
 								response = new Envelope("TOKEN_NOT_VALID");
@@ -193,23 +214,33 @@ public class FileThread extends Thread
 								System.out.printf("Successfully created file %s\n", remotePath.replace('/', '_'));
 
 								response = new Envelope("READY"); //Success
+								response.setNumber(outCounter++);
 								response = AESEncrypt(response, sharedKey);
 								output.writeObject(response);
 
 								e = (Envelope)input.readObject();
 								e = AESDecrypt(e, sharedKey);
+								if(e.getNumber() != inCounter++){
+									 System.out.println("message order incorrect.\nConnection terminated.");
+									 System.exit(1);
+								}
 								while (e.getMessage().compareTo("CHUNK")==0) {
 									fos.write((byte[])e.getObjContents().get(0), 0, (Integer)e.getObjContents().get(1));
 									response = new Envelope("READY"); //Success
+									response.setNumber(outCounter++);
 									response = AESEncrypt(response, sharedKey);
 									output.writeObject(response);
 									e = (Envelope)input.readObject();
 									e = AESDecrypt(e, sharedKey);
+									if(e.getNumber() != inCounter++){
+										 System.out.println("message order incorrect.\nConnection terminated.");
+										 System.exit(1);
+									}
 								}
 
 								if(e.getMessage().compareTo("EOF")==0) {
 									System.out.printf("Transfer successful file %s\n", remotePath);
-									FileServer.fileList.addFile(yourToken.getSubject(), group, remotePath);
+									FileServer.fileList.addFile(yourToken.getSubject(), group, remotePath, version);
 									response = new Envelope("OK"); //Success
 								}
 								else {
@@ -220,6 +251,7 @@ public class FileThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -227,23 +259,35 @@ public class FileThread extends Thread
 
 					String remotePath = (String)e.getObjContents().get(0);
 					Token t = (Token)e.getObjContents().get(1);
+					@SuppressWarnings("unchecked")
+					Hashtable<String, ArrayList<Integer>> versions = (Hashtable<String, ArrayList<Integer>>)e.getObjContents().get(2); 
 					ShareFile sf = FileServer.fileList.getFile("/"+remotePath);
 					if(!checkToken(t)){
 						System.out.println("Token not valid");
 						e = new Envelope("TOKEN_NOT_VALID");
+						e.setNumber(outCounter++);
 						e = AESEncrypt(e, sharedKey);
 						output.writeObject(e);
 					}
 					else if (sf == null) {
 						System.out.printf("Error: File %s doesn't exist\n", remotePath);
 						e = new Envelope("ERROR_FILEMISSING");
+						e.setNumber(outCounter++);
 						e = AESEncrypt(e, sharedKey);
 						output.writeObject(e);
 
 					}
 					else if (!t.getGroups().contains(sf.getGroup())){
-						System.out.printf("Error user %s doesn't have permission\n", t.getSubject());
+						System.out.printf("Error: User %s doesn't have permission\n", t.getSubject());
 						e = new Envelope("ERROR_PERMISSION");
+						e.setNumber(outCounter++);
+						e = AESEncrypt(e, sharedKey);
+						output.writeObject(e);
+					}
+					else if(!versions.get(sf.getGroup()).contains(sf.getVersion())){
+						System.out.println("Error: User does not have the permission of this file - no version access");
+						e = new Envelope("ERROR_VERSION");
+						e.setNumber(outCounter++);
 						e = AESEncrypt(e, sharedKey);
 						output.writeObject(e);
 					}
@@ -255,6 +299,7 @@ public class FileThread extends Thread
 						if (!f.exists()) {
 							System.out.printf("Error file %s missing from disk\n", "_"+remotePath.replace('/', '_'));
 							e = new Envelope("ERROR_NOTONDISK");
+							e.setNumber(outCounter++);
 							e = AESEncrypt(e, sharedKey);
 							output.writeObject(e);
 
@@ -280,25 +325,33 @@ public class FileThread extends Thread
 
 								e.addObject(buf);
 								e.addObject(new Integer(n));
+								e.setNumber(outCounter++);
 								e = AESEncrypt(e, sharedKey);
 								output.writeObject(e);
 
 								e = (Envelope)input.readObject();
 								e = AESDecrypt(e, sharedKey);
-
-							}
-							while (fis.available()>0);
+								if(e.getNumber() != inCounter++){
+									 System.out.println("message order incorrect.\nConnection terminated.");
+									 System.exit(1);
+								}
+							}while (fis.available()>0);
 
 							//If server indicates success, return the member list
 							if(e.getMessage().compareTo("DOWNLOADF")==0)
 							{
 
 								e = new Envelope("EOF");
+								e.setNumber(outCounter++);
 								e = AESEncrypt(e, sharedKey);
 								output.writeObject(e);
 
 								e = (Envelope)input.readObject();
 								e = AESDecrypt(e, sharedKey);
+								if(e.getNumber() != inCounter++){
+									 System.out.println("message order incorrect.\nConnection terminated.");
+									 System.exit(1);
+								}
 								if(e.getMessage().compareTo("OK")==0) {
 									System.out.printf("File data upload successful\n");
 								}
@@ -333,6 +386,7 @@ public class FileThread extends Thread
 					if(!checkToken(t)){
 						System.out.println("Token not valid");
 						e = new Envelope("TOKEN_NOT_VALID");
+						e.setNumber(outCounter++);
 						e = AESEncrypt(e, sharedKey);
 						output.writeObject(e);
 					}
@@ -375,6 +429,7 @@ public class FileThread extends Thread
 							e = new Envelope(e1.getMessage());
 						}
 					}
+					e.setNumber(outCounter++);
 					e = AESEncrypt(e, sharedKey);
 					output.writeObject(e);
 

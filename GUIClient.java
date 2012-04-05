@@ -222,7 +222,7 @@ public class GUIClient extends javax.swing.JFrame {
 
         jLabel4.setText("Source Filename");
 
-        jLabel6.setText("Destinatoin Filename");
+        jLabel6.setText("Destination Filename");
 
         jLabel7.setText("Group Name");
 
@@ -235,6 +235,14 @@ public class GUIClient extends javax.swing.JFrame {
         jLabel14.setText("IP:");
 
         jLabel15.setText("IP:");
+        //set default value
+        GSIPTF.setText("localhost");
+        GSPortTF.setText("8765");
+        usernameTF.setText("admin");
+        passwordTF.setText("admin");
+        FSIPTF.setText("localhost");
+        FSPortTF.setText("4321");
+        
         setJMenuBar(jMenuBar1);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -490,6 +498,9 @@ public class GUIClient extends javax.swing.JFrame {
 		}
 		GSOutput.append(output);
 		GSTA.setText(GSOutput.toString());
+		GSUsernameTF.setText("");
+		GSGroupNameTF.setText("");
+		
 	}
 
 	private void usernameTFActionPerformed(java.awt.event.ActionEvent evt) {
@@ -551,6 +562,9 @@ public class GUIClient extends javax.swing.JFrame {
 		}
 		FSOutput.append(output);
 		FSTA.setText(FSOutput.toString());
+		FSSourceFileTF.setText("");
+		FSDestFileTF.setText("");
+		FSGroupNameTF.setText("");
 	}
 
 	private void GSCommandActionPerformed(java.awt.event.ActionEvent evt) {
@@ -570,6 +584,7 @@ public class GUIClient extends javax.swing.JFrame {
 			String IP = GSIPTF.getText();
 			int port = Integer.parseInt(GSPortTF.getText());
 			userT = usernameTF.getText();
+			groupClient = new GroupClient();
 			if(groupClient.connect(IP, port)){
 				output += "Group Server Connect Successfull\nAttempting to Login\n";
 				groupServerKey = groupClient.getPublicKey();
@@ -637,6 +652,7 @@ public class GUIClient extends javax.swing.JFrame {
 		else{
 			String IP = FSIPTF.getText();
 			int port = Integer.parseInt(FSPortTF.getText());
+			fileClient = new FileClient();
 			if(fileClient.connect(IP, port)){
 				output += "File Server Connect Successfull\nVerifying File Server\n";
 				fileServerKey = fileClient.getPublicKey();

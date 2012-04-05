@@ -25,11 +25,15 @@ public class GroupThread extends Thread
 	private PrivateKey privateKey;
 	private byte[] sharedKey;
 	private String USERNAME;
+	private int inCounter;
+	private int outCounter;
 	
 	public GroupThread(Socket _socket, GroupServer _gs)
 	{
 		socket = _socket;
 		my_gs = _gs;
+		inCounter = 0;
+		outCounter = 0;
 	}
 	
 	public void run()
@@ -59,11 +63,16 @@ public class GroupThread extends Thread
 			while(!loggedIn && proceed){
 				try{
 					Envelope env = (Envelope)input.readObject();
+					if(env.getNumber() != inCounter++){
+						 System.out.println("message order incorrect.\nConnection terminated.");
+						 System.exit(1);
+					}
 					Envelope rEnv;
 					if(env.getMessage().equals("GSPUBLIC"))//Client requests server's public key
 					{
 						rEnv = new Envelope("OK");
 						rEnv.addObject(publicKey);
+						rEnv.setNumber(outCounter++);
 						output.writeObject(rEnv);
 					}
 					else if(env.getMessage().equals("LOGIN"))//Client wants to login
@@ -91,6 +100,7 @@ public class GroupThread extends Thread
 								rEnv = new Envelope("FAIL");
 							}
 						}
+						rEnv.setNumber(outCounter++);
 						output.writeObject(rEnv);
 					}
 				}catch(Exception ex){
@@ -111,17 +121,79 @@ public class GroupThread extends Thread
 					break;
 				}
 				Envelope message = AESDecrypt(mess, sharedKey);
+				if(message.getNumber() != inCounter++){
+					 System.out.println("message order incorrect.\nConnection terminated.");
+					 System.exit(1);
+				}
 				System.out.println("Request received: " + message.getMessage());
 				Envelope response;
 				
 				
-				if(message.getMessage().equals("GET"))//Client wants a token
+				if(message.getMessage().equals("VERSION"))
 				{
 					String username = USERNAME; //Get the username
 					if(username == null)
 					{
 						response = new Envelope("FAIL");
 						response.addObject(null);
+						response.setNumber(outCounter++);
+						response = AESEncrypt(response, sharedKey);
+						output.writeObject(response);
+					}
+					else
+					{
+						String groupName = (String)message.getObjContents().get(0);
+						//UserToken yourToken = createToken(username, fileServerName); //Create a token
+						ArrayList<byte[]> versionKeys = getVersionKeys(username, groupName);
+						//String tokendata = yourToken.getTokendata();
+					 	//byte[] hashed = getHash(tokendata);
+					 	//byte[] signed = RSAEncrypt(hashed, privateKey);
+					 	//yourToken.setSignature(signed);
+						//Respond to the client. On error, the client will receive a null token
+						response = new Envelope("OK");
+						response.addObject(versionKeys);
+						response.setNumber(outCounter++);
+						response = AESEncrypt(response, sharedKey);
+						output.writeObject(response);
+					}
+				}
+				else if(message.getMessage().equals("KEYS"))
+				{
+					String username = USERNAME; //Get the username
+					if(username == null)
+					{
+						response = new Envelope("FAIL");
+						response.addObject(null);
+						response.setNumber(outCounter++);
+						response = AESEncrypt(response, sharedKey);
+						output.writeObject(response);
+					}
+					else
+					{
+						//String groupName = (String)message.getObjContents().get(0);
+						//UserToken yourToken = createToken(username, fileServerName); //Create a token
+						//ArrayList<byte[]> versionKeys = getVersionKeys(username, groupName);
+						Hashtable<String, ArrayList<byte[]>> versionKeys = getVersionKeys(username);
+						//String tokendata = yourToken.getTokendata();
+					 	//byte[] hashed = getHash(tokendata);
+					 	//byte[] signed = RSAEncrypt(hashed, privateKey);
+					 	//yourToken.setSignature(signed);
+						//Respond to the client. On error, the client will receive a null token
+						response = new Envelope("OK");
+						response.addObject(versionKeys);
+						response.setNumber(outCounter++);
+						response = AESEncrypt(response, sharedKey);
+						output.writeObject(response);
+					}
+				}
+				else if(message.getMessage().equals("GET"))//Client wants a token
+				{
+					String username = USERNAME; //Get the username
+					if(username == null)
+					{
+						response = new Envelope("FAIL");
+						response.addObject(null);
+						response.setNumber(outCounter++);
 						response = AESEncrypt(response, sharedKey);
 						output.writeObject(response);
 					}
@@ -136,6 +208,7 @@ public class GroupThread extends Thread
 						//Respond to the client. On error, the client will receive a null token
 						response = new Envelope("OK");
 						response.addObject(yourToken);
+						response.setNumber(outCounter++);
 						response = AESEncrypt(response, sharedKey);
 						output.writeObject(response);
 					}
@@ -163,6 +236,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -191,6 +265,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -219,6 +294,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 					
@@ -248,6 +324,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -277,6 +354,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -307,6 +385,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -337,6 +416,7 @@ public class GroupThread extends Thread
 							}
 						}
 					}
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -348,6 +428,7 @@ public class GroupThread extends Thread
 				else
 				{
 					response = new Envelope("FAIL"); //Server does not understand client request
+					response.setNumber(outCounter++);
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
@@ -391,6 +472,68 @@ public class GroupThread extends Thread
 			//UserToken yourToken = new Token(my_gs.name, username, my_gs.userList.getUserGroups(username), timestamp);
 			UserToken yourToken = new Token(my_gs.name, username, my_gs.userList.getUserGroups(username), fileServerName);
 			return yourToken;
+		}
+		else
+		{
+			System.out.println("User does not exist!-----------------------");
+			return null;
+		}
+	}
+	
+	private ArrayList<byte[]> getVersionKeys(String username, String groupName) 
+	{
+		//Check that user exists
+		if(my_gs.userList.checkUser(username))
+		{
+			if(my_gs.groupList.checkMembership(groupName, username)){
+				ArrayList<byte[]> versionKeys = my_gs.groupList.getVersionKeys(groupName);
+				ArrayList<Integer> versions = my_gs.userList.getVersions(username, groupName);
+				ArrayList<byte[]> keys = new ArrayList<byte[]>();
+				for(int i = 0; i < versionKeys.size(); i++){
+					if(versions.contains(i)){
+						keys.add(versionKeys.get(i));
+					}
+					else{
+						keys.add(null);
+					}
+				}
+				return keys;
+			}
+			else{
+				System.out.println("User is not in the group-----------------");
+				return null;
+			}
+		}
+		else
+		{
+			System.out.println("User does not exist!-----------------------");
+			return null;
+		}
+	}
+	private Hashtable<String, ArrayList<byte[]>> getVersionKeys(String username) 
+	{
+		//Check that user exists
+		if(my_gs.userList.checkUser(username))
+		{
+				//
+				ArrayList<String> groups = my_gs.userList.getUserGroups(username);
+				Hashtable<String, ArrayList<byte[]>> temp = new Hashtable<String, ArrayList<byte[]>>();
+				for(int j = 0; j < groups.size(); j++){
+					ArrayList<Integer> versions = my_gs.userList.getVersions(username, groups.get(j));
+					ArrayList<byte[]> versionKeys = my_gs.groupList.getVersionKeys(groups.get(j));
+					ArrayList<byte[]> keys = new ArrayList<byte[]>();
+					for(int i = 0; i < versionKeys.size(); i++){
+						if(versions.contains(i)){
+							keys.add(versionKeys.get(i));
+						}
+						else{
+							keys.add(null);
+						}
+					}
+					temp.put(groups.get(j), keys);
+				}
+				
+				return temp;
 		}
 		else
 		{
@@ -524,8 +667,9 @@ public class GroupThread extends Thread
 			{
 				my_gs.groupList.addGroup(groupName);
 				my_gs.userList.addOwnership(requester, groupName);
-				my_gs.userList.addGroup(requester, groupName);
-				my_gs.groupList.addMember(groupName, requester);
+				//my_gs.userList.addGroup(requester, groupName);
+				//my_gs.groupList.addMember(groupName, requester);
+				addUserToGroup(requester, groupName, yourToken);
 				return true;
 			}
 			else
@@ -635,6 +779,13 @@ public class GroupThread extends Thread
 						{
 							my_gs.userList.addGroup(username, groupName);
 							my_gs.groupList.addMember(groupName, username);
+							byte[] key = Crypt.generateAESKey(128);
+							my_gs.groupList.addVersionKey(groupName, key);
+							int current = my_gs.groupList.getCurrent(groupName);
+							ArrayList<String> members = my_gs.groupList.getMembers(groupName);
+							for(int i = 0; i < members.size(); i++){
+								my_gs.userList.addVersion(members.get(i), groupName, current);
+							}
 							return true;
 							
 						}
@@ -689,6 +840,13 @@ public class GroupThread extends Thread
 						{
 							my_gs.userList.removeGroup(username, groupName);
 							my_gs.groupList.removeMember(groupName, username);
+							byte[] key = Crypt.generateAESKey(128);
+							my_gs.groupList.addVersionKey(groupName, key);
+							int current = my_gs.groupList.getCurrent(groupName);
+							ArrayList<String> members = my_gs.groupList.getMembers(groupName);
+							for(int i = 0; i < members.size(); i++){
+								my_gs.userList.addVersion(members.get(i), groupName, current);
+							}
 							return true;
 						}
 						else

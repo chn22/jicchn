@@ -75,6 +75,7 @@ public class GroupServer extends Server {
 			userList.addUser(username);
 			userList.addGroup(username, "admin");
 			userList.addOwnership(username, "admin");
+			userList.addVersion(username, "admin", 0);
 		}
 		catch(IOException e)
 		{
@@ -98,6 +99,8 @@ public class GroupServer extends Server {
 			groupList = new GroupList();
 			groupList.addGroup("admin");
 			groupList.addMember("admin", username);
+			byte[] key = Crypt.generateAESKey(128);
+			groupList.addVersionKey("admin", key);	
 		}
 		catch(IOException e)
 		{

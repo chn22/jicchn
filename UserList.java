@@ -70,7 +70,15 @@ import java.util.*;
 		public synchronized void setPassword(String user, byte[] password){
 			list.get(user).setPassword(password);
 		}
-	
+		
+		public synchronized void addVersion(String user, String groupname, int n){
+			list.get(user).addVersion(groupname, n);
+		}
+		
+		public synchronized ArrayList<Integer> getVersions(String user, String groupname){
+			return list.get(user).getVersions(groupname);
+		}
+		
 	class User implements java.io.Serializable {
 
 		/**
@@ -80,6 +88,7 @@ import java.util.*;
 		private ArrayList<String> groups;
 		private ArrayList<String> ownership;
 		private byte[] password;
+		private Hashtable<String,Versions> versions = new Hashtable<String, Versions>();
 		
 		public User()
 		{
@@ -136,6 +145,25 @@ import java.util.*;
 		
 		public void setPassword(byte[] p){
 			password = p;
+		}
+		
+		public ArrayList<Integer> getVersions(String group){
+			return versions.get(group).getVersions();
+		}
+		
+		public void addVersion(String group, int n){
+			if(versions.containsKey(group)){
+				versions.get(group).addVersion(n);
+			}
+			else{
+				Versions v = new Versions(group, n);
+				versions.put(group, v);
+			}
+			
+		}
+		
+		public boolean checkVersion(String group, int n){
+			return versions.get(group).checkVersion(n);
 		}
 		
 	}
