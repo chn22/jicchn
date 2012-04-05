@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Hashtable;
 import java.util.List;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -258,6 +259,8 @@ public class FileThread extends Thread
 
 					String remotePath = (String)e.getObjContents().get(0);
 					Token t = (Token)e.getObjContents().get(1);
+					@SuppressWarnings("unchecked")
+					Hashtable<String, ArrayList<Integer>> versions = (Hashtable<String, ArrayList<Integer>>)e.getObjContents().get(2); 
 					ShareFile sf = FileServer.fileList.getFile("/"+remotePath);
 					if(!checkToken(t)){
 						System.out.println("Token not valid");
@@ -275,8 +278,15 @@ public class FileThread extends Thread
 
 					}
 					else if (!t.getGroups().contains(sf.getGroup())){
-						System.out.printf("Error user %s doesn't have permission\n", t.getSubject());
+						System.out.printf("Error: User %s doesn't have permission\n", t.getSubject());
 						e = new Envelope("ERROR_PERMISSION");
+						e.setNumber(outCounter++);
+						e = AESEncrypt(e, sharedKey);
+						output.writeObject(e);
+					}
+					else if(!versions.get(sf.getGroup()).contains(sf.getVersion())){
+						System.out.println("Error: User does not have the permission of this file - no version access");
+						e = new Envelope("ERROR_VERSION");
 						e.setNumber(outCounter++);
 						e = AESEncrypt(e, sharedKey);
 						output.writeObject(e);

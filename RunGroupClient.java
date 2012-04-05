@@ -561,7 +561,7 @@ public class RunGroupClient{
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					boolean result = fileClient.download(sourceFile, destFile, token, fSharedKey.getEncoded());
+					boolean result = fileClient.download(sourceFile, destFile, token, fSharedKey.getEncoded(), versionKeys);
 					if(result){
 						System.out.println("Download Success");
 					}

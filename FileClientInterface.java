@@ -1,5 +1,6 @@
 
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.List;
 
 /**
@@ -71,7 +72,8 @@ public interface FileClientInterface
      * @return true on success, false on failure
      *
      */
-    public boolean download(final String sourceFile, final String destFile, final UserToken token, final byte[] sKey);
+    public boolean download(final String sourceFile, final String destFile, final UserToken token, 
+    		final byte[] sKey, final Hashtable<String, ArrayList<byte[]>> versions);
 
 
     /**

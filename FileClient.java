@@ -10,6 +10,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.List;
 
 import javax.crypto.Cipher;
@@ -138,7 +139,7 @@ public class FileClient extends Client implements FileClientInterface {
 		return true;
 	}
 
-	public boolean download(String sourceFile, String destFile, UserToken token, byte[] sKey) {
+	public boolean download(String sourceFile, String destFile, UserToken token, byte[] sKey, Hashtable<String, ArrayList<byte[]>> versions) {
 				if (sourceFile.charAt(0)=='/') {
 					sourceFile = sourceFile.substring(1);
 				}
@@ -150,10 +151,21 @@ public class FileClient extends Client implements FileClientInterface {
 				    if (!file.exists()) {
 				    	file.createNewFile();
 					    FileOutputStream fos = new FileOutputStream(file);
-					    
+					    Hashtable<String, ArrayList<Integer>> v = new Hashtable<String, ArrayList<Integer>>();
+					    List<String> groups = token.getGroups();
+					    for(int i = 0; i < groups.size(); i++){
+					    	ArrayList<Integer> temp = new ArrayList<Integer>();
+					    	for(int j = 0; j < versions.get(groups.get(i)).size(); j++){
+					    		if(versions.get(groups.get(i)).get(j) != null){
+					    			temp.add(j);
+					    		}
+					    	}
+					    	v.put(groups.get(i), temp);
+					    }
 					    Envelope env = new Envelope("DOWNLOADF"); //Success
 					    env.addObject(sourceFile);
 					    env.addObject(token);
+					    env.addObject(v);
 					    env.setNumber(outCounter++);
 					    Envelope message = AESEncrypt(env, sKey);
 					    output.writeObject(message); 
