@@ -56,48 +56,60 @@ public class GroupThread extends Thread
 			inStream.close();
 			
 			boolean loggedIn = false;
-			while(!loggedIn){
-				Envelope env = (Envelope)input.readObject();
-				Envelope rEnv;
-				if(env.getMessage().equals("GSPUBLIC"))//Client requests server's public key
-				{
-					rEnv = new Envelope("OK");
-					rEnv.addObject(publicKey);
-					output.writeObject(rEnv);
-				}
-				else if(env.getMessage().equals("LOGIN"))//Client wants to login
-				{
-					byte[] encrypted = (byte[])env.getObjContents().get(0);
-					byte[] credential = RSADecrypt(encrypted, privateKey);
-					
-					int keySize = (Integer)env.getObjContents().get(1);
-					byte[] key = getSecretKey(credential, keySize);
-					String username = getUsername(credential, keySize);
-					USERNAME = getUsername(credential, keySize);
-					String password = getPassword(credential, keySize);
-					if(keySize == 0 || credential == null)
+			while(!loggedIn && proceed){
+				try{
+					Envelope env = (Envelope)input.readObject();
+					Envelope rEnv;
+					if(env.getMessage().equals("GSPUBLIC"))//Client requests server's public key
 					{
-						rEnv = new Envelope("FAIL");
+						rEnv = new Envelope("OK");
+						rEnv.addObject(publicKey);
+						output.writeObject(rEnv);
 					}
-					else
+					else if(env.getMessage().equals("LOGIN"))//Client wants to login
 					{
-						if(login(key, username, password)){
-							rEnv = new Envelope("OK");
-							sharedKey = key;
-							loggedIn = true;
-						}
-						else{
+						byte[] encrypted = (byte[])env.getObjContents().get(0);
+						byte[] credential = RSADecrypt(encrypted, privateKey);
+						
+						int keySize = (Integer)env.getObjContents().get(1);
+						byte[] key = getSecretKey(credential, keySize);
+						String username = getUsername(credential, keySize);
+						USERNAME = getUsername(credential, keySize);
+						String password = getPassword(credential, keySize);
+						if(keySize == 0 || credential == null)
+						{
 							rEnv = new Envelope("FAIL");
 						}
+						else
+						{
+							if(login(key, username, password)){
+								rEnv = new Envelope("OK");
+								sharedKey = key;
+								loggedIn = true;
+							}
+							else{
+								rEnv = new Envelope("FAIL");
+							}
+						}
+						output.writeObject(rEnv);
 					}
-					output.writeObject(rEnv);
+				}catch(Exception ex){
+					System.out.println("Client disconnected.");
+					proceed = false;
 				}
 			}
 			
 			
-			do
+			while(proceed)
 			{
-				Envelope mess = (Envelope)input.readObject();
+				Envelope mess = null;
+				try{
+					mess = (Envelope)input.readObject();
+				}catch(Exception e){
+					System.out.println("Client disconnected.");
+					proceed = false;
+					break;
+				}
 				Envelope message = AESDecrypt(mess, sharedKey);
 				System.out.println("Request received: " + message.getMessage());
 				Envelope response;
@@ -115,12 +127,12 @@ public class GroupThread extends Thread
 					}
 					else
 					{
-						UserToken yourToken = createToken(username); //Create a token
+						String fileServerName = (String)message.getObjContents().get(0);
+						UserToken yourToken = createToken(username, fileServerName); //Create a token
 						String tokendata = yourToken.getTokendata();
-						byte[] hashed = getHash(tokendata);
-						byte[] signed = RSAEncrypt(hashed, privateKey);
-						yourToken.setSignature(signed);
-						
+					 	byte[] hashed = getHash(tokendata);
+					 	byte[] signed = RSAEncrypt(hashed, privateKey);
+					 	yourToken.setSignature(signed);
 						//Respond to the client. On error, the client will receive a null token
 						response = new Envelope("OK");
 						response.addObject(yourToken);
@@ -339,7 +351,7 @@ public class GroupThread extends Thread
 					response = AESEncrypt(response, sharedKey);
 					output.writeObject(response);
 				}
-			}while(proceed);	
+			}
 		}
 		catch(Exception e)
 		{
@@ -369,14 +381,15 @@ public class GroupThread extends Thread
 	
 	
 	//Method to create tokens
-	private UserToken createToken(String username) 
+	private UserToken createToken(String username, String fileServerName) 
 	{
 		//Check that user exists
 		if(my_gs.userList.checkUser(username))
 		{
 			//Issue a new token with server's name, user's name, and user's groups
-			Date timestamp = new Date();
-			UserToken yourToken = new Token(my_gs.name, username, my_gs.userList.getUserGroups(username), timestamp);
+			//Date timestamp = new Date();
+			//UserToken yourToken = new Token(my_gs.name, username, my_gs.userList.getUserGroups(username), timestamp);
+			UserToken yourToken = new Token(my_gs.name, username, my_gs.userList.getUserGroups(username), fileServerName);
 			return yourToken;
 		}
 		else
@@ -468,8 +481,9 @@ public class GroupThread extends Thread
 					for(int index = 0; index < deleteOwnedGroup.size(); index++)
 					{
 						//Use the delete group method. Token must be created for this action
-						Date timestamp = new Date();
-						deleteGroup(deleteOwnedGroup.get(index), new Token(my_gs.name, username, deleteOwnedGroup, timestamp));
+						//Date timestamp = new Date();
+						//deleteGroup(deleteOwnedGroup.get(index), new Token(my_gs.name, username, deleteOwnedGroup, timestamp));
+						deleteGroup(deleteOwnedGroup.get(index), new Token(my_gs.name, username, deleteOwnedGroup, ""));
 					}
 					
 					//Delete the user from the user list

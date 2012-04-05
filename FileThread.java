@@ -29,15 +29,17 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 public class FileThread extends Thread
 {
 	private final Socket socket;
-	private ArrayList<Date> timestamps = new ArrayList<Date>();
+	private ArrayList<Date> timestamps = new ArrayList<Date>();	
 	private PublicKey gspublicKey;
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private byte[] sharedKey;
+	private String serverName;
 	
-	public FileThread(Socket _socket)
+	public FileThread(Socket _socket, String serverName)
 	{
 		socket = _socket;
+		this.serverName = serverName;
 	}
 
 	public void run()
@@ -50,7 +52,6 @@ public class FileThread extends Thread
 			final ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
 			Envelope response;
 			
-
 			ObjectInputStream inStream;
 			inStream = new ObjectInputStream(new FileInputStream("ALPHA.public")); 	
 		    gspublicKey = (PublicKey)inStream.readObject();
@@ -59,48 +60,62 @@ public class FileThread extends Thread
 			Security.addProvider(new BouncyCastleProvider());
 			
 			//load public and private key pair
-			inStream = new ObjectInputStream(new FileInputStream("FilePile" + ".public"));
+			inStream = new ObjectInputStream(new FileInputStream(serverName + ".public"));
 			publicKey = (PublicKey)inStream.readObject();
 			inStream.close();
-			inStream = new ObjectInputStream(new FileInputStream("FilePile" + ".private"));
+			inStream = new ObjectInputStream(new FileInputStream(serverName + ".private"));
 			privateKey = (PrivateKey)inStream.readObject();
 			inStream.close();
-
-			Envelope env = (Envelope)input.readObject();
-			if(env.getMessage().equals("FSPUBLIC"))//Client requests server's public key
-			{
-				try{
-					response = new Envelope("OK");
-					response.addObject(publicKey);
-					response = AESEncrypt(response, sharedKey);
-					output.writeObject(response);
-				}catch(Exception ex){
-					System.err.println(ex);
+			try{
+				Envelope env = (Envelope)input.readObject();
+				if(env.getMessage().equals("FSPUBLIC"))//Client requests server's public key
+				{
+					try{
+						response = new Envelope("OK");
+						response.addObject(publicKey);
+						output.writeObject(response);
+					}catch(Exception ex){
+						System.err.println(ex);
+					}
 				}
-			}
-			env = (Envelope)input.readObject();
-			if(env.getMessage().equals("CHALLENGE"))//Client requests server's public key
-			{
-				try{
-					response = new Envelope("OK");
-					byte[] challenge = (byte[])env.getObjContents().get(0);
-					byte[] deChallenge = RSADecrypt(challenge, privateKey);
-					int keySize = (Integer)env.getObjContents().get(1);
-					byte[] c = new byte[deChallenge.length - keySize];
-					System.arraycopy(deChallenge, keySize, c, 0, c.length);
-					response.addObject(c);
-					response = AESEncrypt(response, sharedKey);
-					output.writeObject(response);
-					sharedKey = new byte[keySize];
-					System.arraycopy(deChallenge, 0, sharedKey, 0, sharedKey.length);
-				}catch(Exception ex){
-					ex.printStackTrace();
+				env = (Envelope)input.readObject();
+				if(env.getMessage().equals("CHALLENGE"))//Client requests server's public key
+				{
+					try{
+						response = new Envelope("OK");
+						byte[] challenge = (byte[])env.getObjContents().get(0);
+						byte[] deChallenge = RSADecrypt(challenge, privateKey);
+						int keySize = (Integer)env.getObjContents().get(1);
+						byte[] c = new byte[deChallenge.length - keySize];
+						System.arraycopy(deChallenge, keySize, c, 0, c.length);
+						response.addObject(c);
+						response.addObject(serverName);
+						output.writeObject(response);
+						sharedKey = new byte[keySize];
+						System.arraycopy(deChallenge, 0, sharedKey, 0, sharedKey.length);
+					}catch(Exception ex){
+						ex.printStackTrace();
+					}
 				}
+				else if(env.getMessage().equals("DISCONNECT")){
+					proceed = false;
+					System.out.println("Client disconnected");
+				}
+			}catch(Exception ex){
+				System.out.println("Client disconnected.");
 			}
 			
-			do
+			while(proceed)
 			{
-				Envelope en = (Envelope)input.readObject();
+				Envelope en = null;
+				try{
+					en = (Envelope)input.readObject();
+				}
+				catch(Exception e){
+					System.out.println("Client disconnected.");
+					proceed = false;
+					break;
+				}
 				Envelope e = AESDecrypt(en, sharedKey);
 				System.out.println("Request received: " + e.getMessage());
 				// Handler to list files that this user is allowed to see
@@ -117,21 +132,21 @@ public class FileThread extends Thread
 						if(!checkToken(yourToken)){
 							System.out.println("Token not valid");
 							response = new Envelope("TOKEN_NOT_VALID");
-						}
-						else{
-							response = new Envelope("OK");
-							List<String> list = new ArrayList<String>();
-							for(int i = 0; i < FileServer.fileList.getFiles().size(); i++)
+						 }
+						 	 else{
+						 	 response = new Envelope("OK");
+						 	 List<String> list = new ArrayList<String>();
+						 	 for(int i = 0; i < FileServer.fileList.getFiles().size(); i++)
 							{
-								for(int j = 0; j < yourToken.getGroups().size(); j++)
+						 		for(int j = 0; j < yourToken.getGroups().size(); j++)
 								{
-									if(FileServer.fileList.getFiles().get(i).getGroup().equals(yourToken.getGroups().get(j)))
-									{
-										list.add(FileServer.fileList.getFiles().get(i).getPath());
-									}
+						 			 if(FileServer.fileList.getFiles().get(i).getGroup().equals(yourToken.getGroups().get(j)))
+						 			 	 {
+						 			 	 list.add(FileServer.fileList.getFiles().get(i).getPath());
+						 			 	 }
 								}
 							}
-							response.addObject(list);
+						 	response.addObject(list);
 						}
 					}
 					response = AESEncrypt(response, sharedKey);
@@ -369,7 +384,7 @@ public class FileThread extends Thread
 					socket.close();
 					proceed = false;
 				}
-			} while(proceed);
+			}
 		}
 		catch(Exception e)
 		{
@@ -490,41 +505,39 @@ public class FileThread extends Thread
 	}
 	
 	private void clearTimestamps(){
-		Date now = new Date();
-		Calendar calendar = Calendar.getInstance();
-		calendar.setTime(now);
-		calendar.add(Calendar.MINUTE, -5);
-		Date fiveAgo = calendar.getTime();
-		for(int i = 0; i < timestamps.size(); i++){
-			Date date = timestamps.get(i);
-			if(date.compareTo(fiveAgo) < 0)
-				timestamps.remove(i);
-		}
+	 	 Date now = new Date();
+	 	 Calendar calendar = Calendar.getInstance();
+	 	 calendar.setTime(now);
+	 	 calendar.add(Calendar.MINUTE, -5);
+	 	 Date fiveAgo = calendar.getTime();
+	 	 for(int i = 0; i < timestamps.size(); i++){
+	 		 Date date = timestamps.get(i);
+	 	   if(date.compareTo(fiveAgo) < 0)
+	 	     timestamps.remove(i);
+	 	 }
 	}
-	
 	private boolean checkTimestamp(Date d){
-		Date now = new Date();
-		Calendar calendar = Calendar.getInstance();
-		calendar.setTime(now);
-		calendar.add(Calendar.MINUTE, -5);
-		Date fiveAgo = calendar.getTime();
-		System.out.println(now);
-		System.out.println(fiveAgo);
-		if(d.compareTo(fiveAgo) < 0)
-			return false;
-		for(Date date : timestamps){
-			if(d.compareTo(date) == 0)
-				return false;
-		}
-		timestamps.add(d);
-		return true;
-	}
-	
+	 	 Date now = new Date();
+	 	 Calendar calendar = Calendar.getInstance();
+	 	 calendar.setTime(now);
+	 	 calendar.add(Calendar.MINUTE, -5);
+	 	 Date fiveAgo = calendar.getTime();
+	 	 System.out.println(now);
+	 	 System.out.println(fiveAgo);
+	 	 if(d.compareTo(fiveAgo) < 0)
+	 	   return false;
+	 	 for(Date date : timestamps){
+	 	   if(d.compareTo(date) == 0)
+	 	     return false;
+	 	 }
+	 	 timestamps.add(d);
+	 	 return true;
+	 	 }
 	private boolean checkToken(UserToken token){
-		String tokendata = token.getTokendata();
-		byte[] hashed = getHash(tokendata);
-		byte[] signed = token.getSignature();
-		byte[] compare = RSADecrypt(signed, gspublicKey);
-		return Arrays.equals(hashed,compare);
+	 	 String tokendata = token.getTokendata();
+	 	 byte[] hashed = getHash(tokendata);
+	 	 byte[] signed = token.getSignature();
+	 	 byte[] compare = RSADecrypt(signed, gspublicKey);
+	 	 return Arrays.equals(hashed,compare) && token.getFileServerName().equals(serverName);
 	}
 }

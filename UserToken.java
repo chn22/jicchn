@@ -49,7 +49,8 @@ public interface UserToken
      */
     public List<String> getGroups();
     
-    public Date getTimestamp();
+    //public Date getTimestamp();
+    public String getFileServerName();
     
     public String getTokendata();
     
