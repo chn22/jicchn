@@ -570,6 +570,7 @@ public class GUIClient extends javax.swing.JFrame {
 			String IP = GSIPTF.getText();
 			int port = Integer.parseInt(GSPortTF.getText());
 			userT = usernameTF.getText();
+			groupClient = new GroupClient();
 			if(groupClient.connect(IP, port)){
 				output += "Group Server Connect Successfull\nAttempting to Login\n";
 				groupServerKey = groupClient.getPublicKey();
@@ -637,6 +638,7 @@ public class GUIClient extends javax.swing.JFrame {
 		else{
 			String IP = FSIPTF.getText();
 			int port = Integer.parseInt(FSPortTF.getText());
+			fileClient = new FileClient();
 			if(fileClient.connect(IP, port)){
 				output += "File Server Connect Successfull\nVerifying File Server\n";
 				fileServerKey = fileClient.getPublicKey();
