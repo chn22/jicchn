@@ -222,7 +222,7 @@ public class GUIClient extends javax.swing.JFrame {
 
         jLabel4.setText("Source Filename");
 
-        jLabel6.setText("Destinatoin Filename");
+        jLabel6.setText("Destination Filename");
 
         jLabel7.setText("Group Name");
 
@@ -235,6 +235,14 @@ public class GUIClient extends javax.swing.JFrame {
         jLabel14.setText("IP:");
 
         jLabel15.setText("IP:");
+        //set default value
+        GSIPTF.setText("localhost");
+        GSPortTF.setText("8765");
+        usernameTF.setText("admin");
+        passwordTF.setText("admin");
+        FSIPTF.setText("localhost");
+        FSPortTF.setText("4321");
+        
         setJMenuBar(jMenuBar1);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -490,6 +498,9 @@ public class GUIClient extends javax.swing.JFrame {
 		}
 		GSOutput.append(output);
 		GSTA.setText(GSOutput.toString());
+		GSUsernameTF.setText("");
+		GSGroupNameTF.setText("");
+		
 	}
 
 	private void usernameTFActionPerformed(java.awt.event.ActionEvent evt) {
@@ -551,6 +562,9 @@ public class GUIClient extends javax.swing.JFrame {
 		}
 		FSOutput.append(output);
 		FSTA.setText(FSOutput.toString());
+		FSSourceFileTF.setText("");
+		FSDestFileTF.setText("");
+		FSGroupNameTF.setText("");
 	}
 
 	private void GSCommandActionPerformed(java.awt.event.ActionEvent evt) {

@@ -258,109 +258,112 @@ public class FileClient extends Client implements FileClientInterface {
 		 }
 		
 		try
-		 {
-			 
-			 Envelope message = null, env = null;
-			 //Tell the server to return the member list
-			 message = new Envelope("UPLOADF");
-			 message.addObject(destFile);
-			 message.addObject(group);
-			 message.addObject(token); //Add requester's token
-			 message.setNumber(outCounter++);
-			 Envelope m = AESEncrypt(message, sKey);
-			 output.writeObject(m);
-			
-			 
-			 FileInputStream fis = new FileInputStream(sourceFile);
-			 
-			 Envelope mess = (Envelope)input.readObject();
-			 env = AESDecrypt(mess, sKey);
-			 if(env.getNumber() != inCounter++){
-				 System.out.println("message order incorrect.\nConnection terminated.");
-				 System.exit(1);
-			 }
-			 //If server indicates success, return the member list
-			 if(env.getMessage().equals("READY"))
-			 { 
-				System.out.printf("Meta data upload successful\n");
-				
+		{
+			File f = new File(sourceFile);
+			if(!f.exists()){
+				System.out.println("File does not exist.");
+				return false;
 			}
-			 else {
-				
-				 System.out.printf("Upload failed: %s\n", env.getMessage());
-				 return false;
-			 }
-			 
-		 	
-			 do {
-				 byte[] buf = new byte[4096];
-				 	if (env.getMessage().compareTo("READY")!=0) {
-				 		System.out.printf("Server error: %s\n", env.getMessage());
-				 		return false;
-				 	}
-				 	message = new Envelope("CHUNK");
-					int n = fis.read(buf); //can throw an IOException
-					if (n > 0) {
-						System.out.printf(".");
-					} else if (n < 0) {
-						System.out.println("Read error");
-						return false;
-					}
-					
-					message.addObject(buf);
-					message.addObject(new Integer(n));
-					message.setNumber(outCounter++);
-					m = AESEncrypt(message, sKey);
-					output.writeObject(m);
-					
-					
-					mess = (Envelope)input.readObject();
-					env = AESDecrypt(mess, sKey);
-					if(env.getNumber() != inCounter++){
-						 System.out.println("message order incorrect.\nConnection terminated.");
-						 System.exit(1);
-					}					
-			 }
-			 while (fis.available()>0);		 
-					 
-			 //If server indicates success, return the member list
-			 if(env.getMessage().compareTo("READY")==0)
-			 { 
-				
+			Envelope message = null, env = null;
+			//Tell the server to return the member list
+			message = new Envelope("UPLOADF");
+			message.addObject(destFile);
+			message.addObject(group);
+			message.addObject(token); //Add requester's token
+			message.setNumber(outCounter++);
+			Envelope m = AESEncrypt(message, sKey);
+			output.writeObject(m);
+			
+			FileInputStream fis = new FileInputStream(sourceFile);
+
+			Envelope mess = (Envelope)input.readObject();
+			env = AESDecrypt(mess, sKey);
+			if(env.getNumber() != inCounter++){
+				System.out.println("message order incorrect.\nConnection terminated.");
+				System.exit(1);
+			}
+			//If server indicates success, return the member list
+			if(env.getMessage().equals("READY"))
+			{ 
+				System.out.printf("Meta data upload successful\n");
+
+			}
+			else {
+
+				System.out.printf("Upload failed: %s\n", env.getMessage());
+				return false;
+			}
+
+
+			do {
+				byte[] buf = new byte[4096];
+				if (env.getMessage().compareTo("READY")!=0) {
+					System.out.printf("Server error: %s\n", env.getMessage());
+					return false;
+				}
+				message = new Envelope("CHUNK");
+				int n = fis.read(buf); //can throw an IOException
+				if (n > 0) {
+					System.out.printf(".");
+				} else if (n < 0) {
+					System.out.println("Read error");
+					return false;
+				}
+
+				message.addObject(buf);
+				message.addObject(new Integer(n));
+				message.setNumber(outCounter++);
+				m = AESEncrypt(message, sKey);
+				output.writeObject(m);
+
+
+				mess = (Envelope)input.readObject();
+				env = AESDecrypt(mess, sKey);
+				if(env.getNumber() != inCounter++){
+					System.out.println("message order incorrect.\nConnection terminated.");
+					System.exit(1);
+				}					
+			}
+			while (fis.available()>0);		 
+
+			//If server indicates success, return the member list
+			if(env.getMessage().compareTo("READY")==0)
+			{ 
+
 				message = new Envelope("EOF");
 				message.setNumber(outCounter++);
 				m = AESEncrypt(message, sKey);
 				output.writeObject(m);
-				
+
 				mess = (Envelope)input.readObject();
 				env = AESDecrypt(mess, sKey);
 				if(env.getNumber() != inCounter++){
-					 System.out.println("message order incorrect.\nConnection terminated.");
-					 System.exit(1);
+					System.out.println("message order incorrect.\nConnection terminated.");
+					System.exit(1);
 				}
 				if(env.getMessage().compareTo("OK")==0) {
 					System.out.printf("\nFile data upload successful\n");
 				}
 				else {
-					
-					 System.out.printf("\nUpload failed: %s\n", env.getMessage());
-					 return false;
-				 }
-				
-			}
-			 else {
-				
-				 System.out.printf("Upload failed: %s\n", env.getMessage());
-				 return false;
-			 }
-			 
-		 }catch(Exception e1)
-			{
-				System.err.println("Error: " + e1.getMessage());
-				e1.printStackTrace(System.err);
-				return false;
+
+					System.out.printf("\nUpload failed: %s\n", env.getMessage());
+					return false;
 				}
-		 return true;
+
+			}
+			else {
+
+				System.out.printf("Upload failed: %s\n", env.getMessage());
+				return false;
+			}
+
+		}catch(Exception e1)
+		{
+			System.err.println("Error: " + e1.getMessage());
+			e1.printStackTrace(System.err);
+			return false;
+		}
+		return true;
 	}
 
 	 public Envelope AESEncrypt(Envelope en, byte[] key){
