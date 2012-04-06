@@ -40,7 +40,7 @@ public interface FileClientInterface
      * @return A list of filenames
      *
      */
-    public List<String> listFiles(final UserToken token, final byte[] sKey);
+    public List<String> listFiles(final UserToken token, final byte[] sKey, byte[] hmackey);
 
 
     /**
@@ -58,7 +58,7 @@ public interface FileClientInterface
      *
      */
     public boolean upload(final String sourceFile, final String destFile, final String group, 
-    		final UserToken token, final byte[] sKey, final ArrayList<byte[]> keys);
+    		final UserToken token, final byte[] sKey, final ArrayList<byte[]> keys, byte[] hmackey);
 
 
     /**
@@ -73,7 +73,7 @@ public interface FileClientInterface
      *
      */
     public boolean download(final String sourceFile, final String destFile, final UserToken token, 
-    		final byte[] sKey, final Hashtable<String, ArrayList<byte[]>> versions);
+    		final byte[] sKey, final Hashtable<String, ArrayList<byte[]>> versions, byte[] hmackey);
 
 
     /**
@@ -86,7 +86,7 @@ public interface FileClientInterface
      * @return true on success, false on failure
      *
      */
-    public boolean delete(final String filename, final UserToken token, final byte[] sKey);
+    public boolean delete(final String filename, final UserToken token, final byte[] sKey, byte[] hmackey);
 
 
 }  //-- end interface FileClientInterface

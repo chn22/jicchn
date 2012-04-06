@@ -31,7 +31,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public Hashtable<String, ArrayList<byte[]>> getVersionKeys(byte[] sKey)
+	public Hashtable<String, ArrayList<byte[]>> getVersionKeys(byte[] sKey, byte[] hmackey)
 	 {
 		try
 		{
@@ -43,12 +43,12 @@ public class GroupClient extends Client implements GroupClientInterface {
 			message = new Envelope("KEYS");
 			//message.addObject(groupName);
 			message.setNumber(outCounter++);
-			Envelope m = AESEncrypt(message, sKey);
+			Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 			output.writeObject(m);
 			//Get the response from the server
 			
 			response = (Envelope)input.readObject();
-			Envelope e = AESDecrypt(response, sKey);
+			Envelope e = Crypt.AESDecrypt(response, sKey, hmackey);
 			if(e.getNumber() != inCounter++){
 				 System.out.println("message order incorrect.\nConnection terminated.");
 				 System.exit(1);
@@ -81,7 +81,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 	 }
 	
 	@SuppressWarnings("unchecked")
-	public ArrayList<byte[]> getVersionKey(byte[] sKey, String groupName)
+	public ArrayList<byte[]> getVersionKey(byte[] sKey, String groupName, byte[] hmackey)
 	 {
 		try
 		{
@@ -93,12 +93,12 @@ public class GroupClient extends Client implements GroupClientInterface {
 			message = new Envelope("VERSION");
 			message.addObject(groupName);
 			message.setNumber(outCounter++);
-			Envelope m = AESEncrypt(message, sKey);
+			Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 			output.writeObject(m);
 			//Get the response from the server
 			
 			response = (Envelope)input.readObject();
-			Envelope e = AESDecrypt(response, sKey);
+			Envelope e = Crypt.AESDecrypt(response, sKey, hmackey);
 			if(e.getNumber() != inCounter++){
 				 System.out.println("message order incorrect.\nConnection terminated.");
 				 System.exit(1);
@@ -172,13 +172,14 @@ public class GroupClient extends Client implements GroupClientInterface {
 		}
 	}
 	
-	public boolean login(byte[] credential, int keySize){
+	public boolean login(byte[] credential, int keySize, int HmacKeySize){
 		try{
 			Envelope message = null, response = null;
 			
 			 message = new Envelope("LOGIN");
 			 message.addObject(credential); 
 			 message.addObject(keySize);
+			 message.addObject(HmacKeySize);
 			 message.setNumber(outCounter++);
 			 output.writeObject(message);
 		
@@ -201,7 +202,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 		return false;
 	}
 	
-	 public UserToken getToken(byte[] sKey, String fileServerName)
+	 public UserToken getToken(byte[] sKey, byte[] hmackey, String fileServerName)
 	 {
 		try
 		{
@@ -212,12 +213,12 @@ public class GroupClient extends Client implements GroupClientInterface {
 			message = new Envelope("GET");
 			message.addObject(fileServerName);
 			message.setNumber(outCounter++);
-			Envelope m = AESEncrypt(message, sKey);
+			Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 			output.writeObject(m);
 			//Get the response from the server
 			
 			response = (Envelope)input.readObject();
-			Envelope e = AESDecrypt(response, sKey);
+			Envelope e = Crypt.AESDecrypt(response, sKey, hmackey);
 			if(e.getNumber() != inCounter++){
 				 System.out.println("message order incorrect.\nConnection terminated.");
 				 System.exit(1);
@@ -249,7 +250,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 		
 	 }
 	 
-	 public boolean createUser(String username, UserToken token, byte[] sKey)
+	 public boolean createUser(String username, UserToken token, byte[] sKey, byte[] hmackey)
 	 {
 		 try
 		 {
@@ -259,11 +260,11 @@ public class GroupClient extends Client implements GroupClientInterface {
 			 message.addObject(username); //Add user name string
 			 message.addObject(token); //Add the requester's token
 			 message.setNumber(outCounter++);
-			 Envelope m = AESEncrypt(message, sKey);
+			 Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 			 output.writeObject(m);
 		
 			 response = (Envelope)input.readObject();
-			 Envelope e = AESDecrypt(response, sKey);
+			 Envelope e = Crypt.AESDecrypt(response, sKey, hmackey);
 			 if(e.getNumber() != inCounter++){
 				 System.out.println("message order incorrect.\nConnection terminated.");
 				 System.exit(1);
@@ -283,7 +284,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 		 }
 	 }
 	 
-	 public boolean deleteUser(String username, UserToken token, byte[] sKey)
+	 public boolean deleteUser(String username, UserToken token, byte[] sKey, byte[] hmackey)
 	 {
 		 try
 			{
@@ -294,11 +295,11 @@ public class GroupClient extends Client implements GroupClientInterface {
 				message.addObject(username); //Add user name
 				message.addObject(token);  //Add requester's token
 				message.setNumber(outCounter++);
-				Envelope m = AESEncrypt(message, sKey);
+				Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 				output.writeObject(m);
 			
 				response = (Envelope)input.readObject();
-				Envelope e = AESDecrypt(response, sKey);
+				Envelope e = Crypt.AESDecrypt(response, sKey, hmackey);
 				if(e.getNumber() != inCounter++){
 					 System.out.println("message order incorrect.\nConnection terminated.");
 					 System.exit(1);
@@ -319,7 +320,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 			}
 	 }
 	 
-	 public boolean createGroup(String groupname, UserToken token, byte[] sKey)
+	 public boolean createGroup(String groupname, UserToken token, byte[] sKey, byte[] hmackey)
 	 {
 		 try
 			{
@@ -329,11 +330,11 @@ public class GroupClient extends Client implements GroupClientInterface {
 				message.addObject(groupname); //Add the group name string
 				message.addObject(token); //Add the requester's token
 				message.setNumber(outCounter++);
-				Envelope m = AESEncrypt(message, sKey);
+				Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 				output.writeObject(m); 
 			
 				response = (Envelope)input.readObject();
-				Envelope e = AESDecrypt(response, sKey);
+				Envelope e = Crypt.AESDecrypt(response, sKey, hmackey);
 				if(e.getNumber() != inCounter++){
 					 System.out.println("message order incorrect.\nConnection terminated.");
 					 System.exit(1);
@@ -354,7 +355,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 			}
 	 }
 	 
-	 public boolean deleteGroup(String groupname, UserToken token, byte[] sKey)
+	 public boolean deleteGroup(String groupname, UserToken token, byte[] sKey, byte[]hmackey)
 	 {
 		 try
 			{
@@ -364,11 +365,11 @@ public class GroupClient extends Client implements GroupClientInterface {
 				message.addObject(groupname); //Add group name string
 				message.addObject(token); //Add requester's token
 				message.setNumber(outCounter++);
-				Envelope m = AESEncrypt(message, sKey);
+				Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 				output.writeObject(m); 
 			
 				response = (Envelope)input.readObject();
-				Envelope e = AESDecrypt(response, sKey);
+				Envelope e = Crypt.AESDecrypt(response, sKey, hmackey);
 				if(e.getNumber() != inCounter++){
 					 System.out.println("message order incorrect.\nConnection terminated.");
 					 System.exit(1);
@@ -390,7 +391,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 	 }
 	 
 	 @SuppressWarnings("unchecked")
-	public List<String> listMembers(String group, UserToken token, byte[] sKey)
+	public List<String> listMembers(String group, UserToken token, byte[] sKey, byte[] hmackey)
 	 {
 		 try
 		 {
@@ -400,11 +401,11 @@ public class GroupClient extends Client implements GroupClientInterface {
 			 message.addObject(group); //Add group name string
 			 message.addObject(token); //Add requester's token
 			 message.setNumber(outCounter++);
-			 Envelope m = AESEncrypt(message, sKey);
+			 Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 			 output.writeObject(m); 
 			 
 			 response = (Envelope)input.readObject();
-			 Envelope e = AESDecrypt(response, sKey);
+			 Envelope e = Crypt.AESDecrypt(response, sKey, hmackey);
 			 if(e.getNumber() != inCounter++){
 				 System.out.println("message order incorrect.\nConnection terminated.");
 				 System.exit(1);
@@ -426,7 +427,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 			}
 	 }
 	 
-	 public boolean addUserToGroup(String username, String groupname, UserToken token, byte[] sKey)
+	 public boolean addUserToGroup(String username, String groupname, UserToken token, byte[] sKey, byte[] hmackey)
 	 {
 		 try
 			{
@@ -437,11 +438,11 @@ public class GroupClient extends Client implements GroupClientInterface {
 				message.addObject(groupname); //Add group name string
 				message.addObject(token); //Add requester's token
 				message.setNumber(outCounter++);
-				Envelope m = AESEncrypt(message, sKey);
+				Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 				output.writeObject(m); 
 			
 				response = (Envelope)input.readObject();
-				Envelope e = AESDecrypt(response, sKey);
+				Envelope e = Crypt.AESDecrypt(response, sKey, hmackey);
 				if(e.getNumber() != inCounter++){
 					 System.out.println("message order incorrect.\nConnection terminated.");
 					 System.exit(1);
@@ -462,7 +463,7 @@ public class GroupClient extends Client implements GroupClientInterface {
 			}
 	 }
 	 
-	 public boolean deleteUserFromGroup(String username, String groupname, UserToken token, byte[] sKey)
+	 public boolean deleteUserFromGroup(String username, String groupname, UserToken token, byte[] sKey, byte[] hmackey)
 	 {
 		 try
 			{
@@ -473,11 +474,11 @@ public class GroupClient extends Client implements GroupClientInterface {
 				message.addObject(groupname); //Add group name string
 				message.addObject(token); //Add requester's token
 				message.setNumber(outCounter++);
-				Envelope m = AESEncrypt(message, sKey);
+				Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 				output.writeObject(m);
 			
 				response = (Envelope)input.readObject();
-				Envelope e = AESDecrypt(response, sKey);
+				Envelope e = Crypt.AESDecrypt(response, sKey, hmackey);
 				if(e.getNumber() != inCounter++){
 					 System.out.println("message order incorrect.\nConnection terminated.");
 					 System.exit(1);

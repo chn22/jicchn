@@ -24,6 +24,7 @@ public class GroupThread extends Thread
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private byte[] sharedKey;
+	private byte[] HmacKey;
 	private String USERNAME;
 	private int inCounter;
 	private int outCounter;
@@ -81,10 +82,12 @@ public class GroupThread extends Thread
 						byte[] credential = RSADecrypt(encrypted, privateKey);
 						
 						int keySize = (Integer)env.getObjContents().get(1);
+						int HmacKeySize = (Integer)env.getObjContents().get(2);
 						byte[] key = getSecretKey(credential, keySize);
-						String username = getUsername(credential, keySize);
-						USERNAME = getUsername(credential, keySize);
-						String password = getPassword(credential, keySize);
+						byte[] hmacKey = getHmacKey(credential, keySize, HmacKeySize);
+						String username = getUsername(credential, keySize + HmacKeySize);
+						USERNAME = getUsername(credential, keySize + HmacKeySize);
+						String password = getPassword(credential, keySize + HmacKeySize);
 						if(keySize == 0 || credential == null)
 						{
 							rEnv = new Envelope("FAIL");
@@ -94,6 +97,7 @@ public class GroupThread extends Thread
 							if(login(key, username, password)){
 								rEnv = new Envelope("OK");
 								sharedKey = key;
+								HmacKey = hmacKey;
 								loggedIn = true;
 							}
 							else{
@@ -120,7 +124,7 @@ public class GroupThread extends Thread
 					proceed = false;
 					break;
 				}
-				Envelope message = AESDecrypt(mess, sharedKey);
+				Envelope message = Crypt.AESDecrypt(mess, sharedKey, HmacKey);
 				if(message.getNumber() != inCounter++){
 					 System.out.println("message order incorrect.\nConnection terminated.");
 					 System.exit(1);
@@ -137,7 +141,7 @@ public class GroupThread extends Thread
 						response = new Envelope("FAIL");
 						response.addObject(null);
 						response.setNumber(outCounter++);
-						response = AESEncrypt(response, sharedKey);
+						response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 						output.writeObject(response);
 					}
 					else
@@ -153,7 +157,7 @@ public class GroupThread extends Thread
 						response = new Envelope("OK");
 						response.addObject(versionKeys);
 						response.setNumber(outCounter++);
-						response = AESEncrypt(response, sharedKey);
+						response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 						output.writeObject(response);
 					}
 				}
@@ -165,7 +169,7 @@ public class GroupThread extends Thread
 						response = new Envelope("FAIL");
 						response.addObject(null);
 						response.setNumber(outCounter++);
-						response = AESEncrypt(response, sharedKey);
+						response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 						output.writeObject(response);
 					}
 					else
@@ -182,7 +186,7 @@ public class GroupThread extends Thread
 						response = new Envelope("OK");
 						response.addObject(versionKeys);
 						response.setNumber(outCounter++);
-						response = AESEncrypt(response, sharedKey);
+						response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 						output.writeObject(response);
 					}
 				}
@@ -209,7 +213,7 @@ public class GroupThread extends Thread
 						response = new Envelope("OK");
 						response.addObject(yourToken);
 						response.setNumber(outCounter++);
-						response = AESEncrypt(response, sharedKey);
+						response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 						output.writeObject(response);
 					}
 				}
@@ -237,7 +241,7 @@ public class GroupThread extends Thread
 						}
 					}
 					response.setNumber(outCounter++);
-					response = AESEncrypt(response, sharedKey);
+					response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("DUSER")) //Client wants to delete a user
@@ -266,7 +270,7 @@ public class GroupThread extends Thread
 						}
 					}
 					response.setNumber(outCounter++);
-					response = AESEncrypt(response, sharedKey);
+					response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("CGROUP")) //Client wants to create a group
@@ -295,7 +299,7 @@ public class GroupThread extends Thread
 						}
 					}
 					response.setNumber(outCounter++);
-					response = AESEncrypt(response, sharedKey);
+					response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 					output.writeObject(response);
 					
 				}
@@ -325,7 +329,7 @@ public class GroupThread extends Thread
 						}
 					}
 					response.setNumber(outCounter++);
-					response = AESEncrypt(response, sharedKey);
+					response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("LMEMBERS")) //Client wants a list of members in a group
@@ -355,7 +359,7 @@ public class GroupThread extends Thread
 						}
 					}
 					response.setNumber(outCounter++);
-					response = AESEncrypt(response, sharedKey);
+					response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("AUSERTOGROUP")) //Client wants to add user to a group
@@ -386,7 +390,7 @@ public class GroupThread extends Thread
 						}
 					}
 					response.setNumber(outCounter++);
-					response = AESEncrypt(response, sharedKey);
+					response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("RUSERFROMGROUP")) //Client wants to remove user from a group
@@ -417,7 +421,7 @@ public class GroupThread extends Thread
 						}
 					}
 					response.setNumber(outCounter++);
-					response = AESEncrypt(response, sharedKey);
+					response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 					output.writeObject(response);
 				}
 				else if(message.getMessage().equals("DISCONNECT")) //Client wants to disconnect
@@ -429,7 +433,7 @@ public class GroupThread extends Thread
 				{
 					response = new Envelope("FAIL"); //Server does not understand client request
 					response.setNumber(outCounter++);
-					response = AESEncrypt(response, sharedKey);
+					response = Crypt.AESEncrypt(response, sharedKey, HmacKey);
 					output.writeObject(response);
 				}
 			}
@@ -994,6 +998,12 @@ public class GroupThread extends Thread
 	private byte[] getSecretKey(byte[] bytes, int keyLength){
 		byte[] key = new byte[keyLength];
 		System.arraycopy(bytes,0,key,0,keyLength);
+		return key;
+	}
+	
+	private byte[] getHmacKey(byte[] bytes, int keyLength, int HmacKeySize){
+		byte[] key = new byte[HmacKeySize];
+		System.arraycopy(bytes, keyLength, key, 0, HmacKeySize);
 		return key;
 	}
 	

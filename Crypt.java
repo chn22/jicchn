@@ -2,10 +2,14 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.security.Key;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
+import java.util.Arrays;
+
+import javax.crypto.Mac;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -13,6 +17,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+//import org.bouncycastle.crypto.Mac;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 public class Crypt {
@@ -30,6 +35,20 @@ public class Crypt {
 		}
 		return skey;
 	}
+	
+	public static byte[] generateHMacKey(){
+		Security.addProvider(new BouncyCastleProvider());
+		byte[] skey = null;
+		try{
+			KeyGenerator kgen = KeyGenerator.getInstance("HmacSHA1", "BC");
+			SecretKey key = kgen.generateKey();
+			skey = key.getEncoded();
+		}catch(Exception e){
+			System.out.println(e);
+		}
+		return skey;
+	}
+	
 	
 	//Get public key fingerprint
 	public static String getFingerprint(PublicKey key){
@@ -126,6 +145,24 @@ public class Crypt {
 		return envelope;
 	}
 	
+	public static Envelope AESEncrypt(Envelope en, byte[] key, byte[] hmackey){
+		Security.addProvider(new BouncyCastleProvider());
+		Envelope envelope = new Envelope("IV, Encryption");
+		SecretKeySpec skeyspec = new SecretKeySpec(key, "AES");
+		try{
+			byte[] bytes = getBytes(en);
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
+			cipher.init(Cipher.ENCRYPT_MODE, skeyspec);
+			envelope.addObject(cipher.getIV());
+			byte[] encrypt = cipher.doFinal(bytes);
+			envelope.addObject(encrypt);
+			envelope.addObject(getHmac(encrypt, hmackey));
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return envelope;
+	}
+	
 	public static byte[] AESEncrypt(byte[] b, byte[] key){
 		Security.addProvider(new BouncyCastleProvider());
 		SecretKeySpec skeyspec = new SecretKeySpec(key, "AES");
@@ -138,6 +175,8 @@ public class Crypt {
 		}
 		return null;
 	}
+	
+	
 
 	//Decrypt the content in the envelope with IV
 	public static Envelope AESDecrypt(Envelope envelope, byte[] key){
@@ -146,6 +185,32 @@ public class Crypt {
 		byte[] decrypt = null; 
 		byte[] IV = (byte[]) envelope.getObjContents().get(0);
 		byte[] encrypted = (byte[]) envelope.getObjContents().get(1);
+		SecretKeySpec skeyspec = new SecretKeySpec(key, "AES");
+		try{
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
+			cipher.init(Cipher.DECRYPT_MODE, skeyspec, new IvParameterSpec(IV));
+			decrypt = cipher.doFinal(encrypted);
+			en = getEnvelope(decrypt);
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return en;
+	}
+	
+	public static Envelope AESDecrypt(Envelope envelope, byte[] key, byte[] hmackey){
+		byte[] encrypted = (byte[]) envelope.getObjContents().get(1);
+		byte[] hash1 = Crypt.getHmac(encrypted, hmackey);
+		byte[] hash2 = (byte[]) envelope.getObjContents().get(2);
+		boolean compare = Arrays.equals(hash1, hash2);
+		if(!compare){
+			System.out.println("Hmac is wrong - message has been altered");
+			System.exit(1);
+		}
+		Security.addProvider(new BouncyCastleProvider());
+		Envelope en = null;
+		byte[] decrypt = null; 
+		byte[] IV = (byte[]) envelope.getObjContents().get(0);
+		//byte[] encrypted = (byte[]) envelope.getObjContents().get(1);
 		SecretKeySpec skeyspec = new SecretKeySpec(key, "AES");
 		try{
 			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
@@ -170,6 +235,21 @@ public class Crypt {
 		}
 		return null;
 	}
+	
+	public static byte[] getHmac(byte[] data, byte[] key){
+		Security.addProvider(new BouncyCastleProvider());
+		Key skeyspec = new SecretKeySpec(key, 0, key.length, "HmacSHA1");
+		byte[] hashed = null;
+		try{
+			Mac mac = Mac.getInstance("HmacSHA1", "BC");
+			mac.init(skeyspec);
+			hashed = mac.doFinal(data);
+		} catch(Exception e){
+			System.out.println(e);
+		}
+		return hashed;
+	}
+	
 	//Convert Envelope Object into byte arrays
 	private static byte[] getBytes(Envelope e) throws java.io.IOException{
 		Security.addProvider(new BouncyCastleProvider());

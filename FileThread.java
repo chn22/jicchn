@@ -35,6 +35,7 @@ public class FileThread extends Thread
 	private PublicKey publicKey;
 	private PrivateKey privateKey;
 	private byte[] sharedKey;
+	private byte[] hmackey;
 	private String serverName;
 	private int inCounter;
 	private int outCounter;
@@ -100,7 +101,8 @@ public class FileThread extends Thread
 						byte[] challenge = (byte[])env.getObjContents().get(0);
 						byte[] deChallenge = RSADecrypt(challenge, privateKey);
 						int keySize = (Integer)env.getObjContents().get(1);
-						byte[] c = new byte[deChallenge.length - keySize];
+						int hmackeysize = (Integer)env.getObjContents().get(2);
+						byte[] c = new byte[deChallenge.length - keySize - hmackeysize];
 						System.arraycopy(deChallenge, keySize, c, 0, c.length);
 						response.addObject(c);
 						response.addObject(serverName);
@@ -108,6 +110,8 @@ public class FileThread extends Thread
 						output.writeObject(response);
 						sharedKey = new byte[keySize];
 						System.arraycopy(deChallenge, 0, sharedKey, 0, sharedKey.length);
+						hmackey = new byte[hmackeysize];
+						System.arraycopy(deChallenge, deChallenge.length - hmackeysize, hmackey, 0, hmackeysize);
 					}catch(Exception ex){
 						ex.printStackTrace();
 					}
@@ -131,7 +135,7 @@ public class FileThread extends Thread
 					proceed = false;
 					break;
 				}
-				Envelope e = AESDecrypt(en, sharedKey);
+				Envelope e = Crypt.AESDecrypt(en, sharedKey, hmackey);
 				if(e.getNumber() != inCounter++){
 					 System.out.println("message order incorrect.\nConnection terminated.");
 					 System.exit(1);
@@ -169,7 +173,7 @@ public class FileThread extends Thread
 						}
 					}
 					response.setNumber(outCounter++);
-					response = AESEncrypt(response, sharedKey);
+					response = Crypt.AESEncrypt(response, sharedKey, hmackey);
 					output.writeObject(response);
 				}
 				else if(e.getMessage().equals("UPLOADF"))
@@ -215,11 +219,11 @@ public class FileThread extends Thread
 
 								response = new Envelope("READY"); //Success
 								response.setNumber(outCounter++);
-								response = AESEncrypt(response, sharedKey);
+								response = Crypt.AESEncrypt(response, sharedKey, hmackey);
 								output.writeObject(response);
 
 								e = (Envelope)input.readObject();
-								e = AESDecrypt(e, sharedKey);
+								e = Crypt.AESDecrypt(e, sharedKey, hmackey);
 								if(e.getNumber() != inCounter++){
 									 System.out.println("message order incorrect.\nConnection terminated.");
 									 System.exit(1);
@@ -228,10 +232,10 @@ public class FileThread extends Thread
 									fos.write((byte[])e.getObjContents().get(0), 0, (Integer)e.getObjContents().get(1));
 									response = new Envelope("READY"); //Success
 									response.setNumber(outCounter++);
-									response = AESEncrypt(response, sharedKey);
+									response = Crypt.AESEncrypt(response, sharedKey, hmackey);
 									output.writeObject(response);
 									e = (Envelope)input.readObject();
-									e = AESDecrypt(e, sharedKey);
+									e = Crypt.AESDecrypt(e, sharedKey, hmackey);
 									if(e.getNumber() != inCounter++){
 										 System.out.println("message order incorrect.\nConnection terminated.");
 										 System.exit(1);
@@ -252,7 +256,7 @@ public class FileThread extends Thread
 						}
 					}
 					response.setNumber(outCounter++);
-					response = AESEncrypt(response, sharedKey);
+					response = Crypt.AESEncrypt(response, sharedKey, hmackey);
 					output.writeObject(response);
 				}
 				else if (e.getMessage().compareTo("DOWNLOADF")==0) {
@@ -266,14 +270,14 @@ public class FileThread extends Thread
 						System.out.println("Token not valid");
 						e = new Envelope("TOKEN_NOT_VALID");
 						e.setNumber(outCounter++);
-						e = AESEncrypt(e, sharedKey);
+						e = Crypt.AESEncrypt(e, sharedKey, hmackey);
 						output.writeObject(e);
 					}
 					else if (sf == null) {
 						System.out.printf("Error: File %s doesn't exist\n", remotePath);
 						e = new Envelope("ERROR_FILEMISSING");
 						e.setNumber(outCounter++);
-						e = AESEncrypt(e, sharedKey);
+						e = Crypt.AESEncrypt(e, sharedKey, hmackey);
 						output.writeObject(e);
 
 					}
@@ -281,14 +285,14 @@ public class FileThread extends Thread
 						System.out.printf("Error: User %s doesn't have permission\n", t.getSubject());
 						e = new Envelope("ERROR_PERMISSION");
 						e.setNumber(outCounter++);
-						e = AESEncrypt(e, sharedKey);
+						e = Crypt.AESEncrypt(e, sharedKey, hmackey);
 						output.writeObject(e);
 					}
 					else if(!versions.get(sf.getGroup()).contains(sf.getVersion())){
 						System.out.println("Error: User does not have the permission of this file - no version access");
 						e = new Envelope("ERROR_VERSION");
 						e.setNumber(outCounter++);
-						e = AESEncrypt(e, sharedKey);
+						e = Crypt.AESEncrypt(e, sharedKey, hmackey);
 						output.writeObject(e);
 					}
 					else {
@@ -300,7 +304,7 @@ public class FileThread extends Thread
 							System.out.printf("Error file %s missing from disk\n", "_"+remotePath.replace('/', '_'));
 							e = new Envelope("ERROR_NOTONDISK");
 							e.setNumber(outCounter++);
-							e = AESEncrypt(e, sharedKey);
+							e = Crypt.AESEncrypt(e, sharedKey, hmackey);
 							output.writeObject(e);
 
 						}
@@ -328,11 +332,11 @@ public class FileThread extends Thread
 								e.addObject(sf.getGroup());
 								e.addObject(sf.getVersion());
 								e.setNumber(outCounter++);
-								e = AESEncrypt(e, sharedKey);
+								e = Crypt.AESEncrypt(e, sharedKey, hmackey);
 								output.writeObject(e);
 
 								e = (Envelope)input.readObject();
-								e = AESDecrypt(e, sharedKey);
+								e = Crypt.AESDecrypt(e, sharedKey, hmackey);
 								if(e.getNumber() != inCounter++){
 									 System.out.println("message order incorrect.\nConnection terminated.");
 									 System.exit(1);
@@ -345,11 +349,11 @@ public class FileThread extends Thread
 
 								e = new Envelope("EOF");
 								e.setNumber(outCounter++);
-								e = AESEncrypt(e, sharedKey);
+								e = Crypt.AESEncrypt(e, sharedKey, hmackey);
 								output.writeObject(e);
 
 								e = (Envelope)input.readObject();
-								e = AESDecrypt(e, sharedKey);
+								e = Crypt.AESDecrypt(e, sharedKey, hmackey);
 								if(e.getNumber() != inCounter++){
 									 System.out.println("message order incorrect.\nConnection terminated.");
 									 System.exit(1);
@@ -389,7 +393,7 @@ public class FileThread extends Thread
 						System.out.println("Token not valid");
 						e = new Envelope("TOKEN_NOT_VALID");
 						e.setNumber(outCounter++);
-						e = AESEncrypt(e, sharedKey);
+						e = Crypt.AESEncrypt(e, sharedKey, hmackey);
 						output.writeObject(e);
 					}
 					else if (sf == null) {
@@ -432,7 +436,7 @@ public class FileThread extends Thread
 						}
 					}
 					e.setNumber(outCounter++);
-					e = AESEncrypt(e, sharedKey);
+					e = Crypt.AESEncrypt(e, sharedKey, hmackey);
 					output.writeObject(e);
 
 				}
