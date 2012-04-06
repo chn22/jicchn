@@ -308,7 +308,7 @@ public class FileThread extends Thread
 							FileInputStream fis = new FileInputStream(f);
 
 							do {
-								byte[] buf = new byte[4096];
+								byte[] buf = new byte[4112];
 								if (e.getMessage().compareTo("DOWNLOADF")!=0) {
 									System.out.printf("Server error: %s\n", e.getMessage());
 									break;
@@ -321,10 +321,12 @@ public class FileThread extends Thread
 									System.out.println("Read error");
 
 								}
-
+								
 
 								e.addObject(buf);
 								e.addObject(new Integer(n));
+								e.addObject(sf.getGroup());
+								e.addObject(sf.getVersion());
 								e.setNumber(outCounter++);
 								e = AESEncrypt(e, sharedKey);
 								output.writeObject(e);

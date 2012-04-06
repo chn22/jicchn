@@ -117,7 +117,7 @@ import java.util.*;
 		}
 		
 		public int getCurrent(){
-			return versionKey.size();
+			return versionKey.size() - 1;
 		}
 		
 		public void addVersionKey(byte[] key){
