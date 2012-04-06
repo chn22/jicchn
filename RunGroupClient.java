@@ -39,6 +39,8 @@ public class RunGroupClient{
 	private static SecretKey gSharedKey = null;
 	private static SecretKey fSharedKey = null;
 	static String fileServerName = null;
+	static byte[] gHmacKey = null;
+	static byte[] fHmacKey = null;
 	
 	public static final byte[] intToByteArray(int value) {
 	    return new byte[] {
@@ -149,11 +151,12 @@ public class RunGroupClient{
 		return e;
 	}
 	
-	public static byte[] merge(byte[] key, String username, String password){
+	public static byte[] merge(byte[] key, byte[] Hmac, String username, String password){
 		String up = username + "\n" + password;
-		byte[] merge = new byte[key.length + up.getBytes().length];
+		byte[] merge = new byte[key.length + Hmac.length + up.getBytes().length];
 		System.arraycopy(key,0,merge,0,key.length);
-		System.arraycopy(up.getBytes(),0,merge,key.length,up.getBytes().length);
+		System.arraycopy(Hmac, 0, merge, key.length, Hmac.length);
+		System.arraycopy(up.getBytes(),0,merge,key.length+Hmac.length,up.getBytes().length);
 		return merge;
 	}
 		
@@ -234,9 +237,10 @@ public class RunGroupClient{
 				KeyGenerator kgen = KeyGenerator.getInstance("AES", "BC");
 				kgen.init(128);
 				gSharedKey = kgen.generateKey();
-				byte[] mergedData = merge(gSharedKey.getEncoded(), username, password);
+				gHmacKey = Crypt.generateHMacKey();
+				byte[] mergedData = merge(gSharedKey.getEncoded(), gHmacKey, username, password);
 				byte[] encryptedLogin = RSAEncrypt(mergedData, groupServerKey);
-				loginSuccess = groupClient.login(encryptedLogin, 128/8);
+				loginSuccess = groupClient.login(encryptedLogin, 128/8, gHmacKey.length);
 				if(loginSuccess){
 					System.out.println("Login successful.");
 				}
@@ -250,8 +254,8 @@ public class RunGroupClient{
 		
 		//loop to wait for command
 		do{
-			token = groupClient.getToken(gSharedKey.getEncoded(), fileServerName);
-			versionKeys = groupClient.getVersionKeys(gSharedKey.getEncoded());
+			token = groupClient.getToken(gSharedKey.getEncoded(), gHmacKey, fileServerName);
+			versionKeys = groupClient.getVersionKeys(gSharedKey.getEncoded(), gHmacKey);
 			//token = groupClient.getToken(usert);
 			//token = groupClient.getToken(gSharedKey.getEncoded());
 			try{
@@ -272,7 +276,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.createUser(username, token, gSharedKey.getEncoded());
+				boolean result = groupClient.createUser(username, token, gSharedKey.getEncoded(), gHmacKey);
 				if(result){
 					System.out.println("success");
 				}
@@ -289,7 +293,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.deleteUser(username, token, gSharedKey.getEncoded());
+				boolean result = groupClient.deleteUser(username, token, gSharedKey.getEncoded(), gHmacKey);
 				if(result){
 					System.out.println("success");
 				}
@@ -303,7 +307,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.createGroup(groupname, token, gSharedKey.getEncoded());
+				boolean result = groupClient.createGroup(groupname, token, gSharedKey.getEncoded(), gHmacKey);
 				if(result){
 					System.out.println("success");
 				}
@@ -317,7 +321,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.deleteGroup(groupname, token, gSharedKey.getEncoded());
+				boolean result = groupClient.deleteGroup(groupname, token, gSharedKey.getEncoded(), gHmacKey);
 				if(result){
 					System.out.println("success");
 				}
@@ -331,7 +335,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				List<String> result = groupClient.listMembers(groupname, token, gSharedKey.getEncoded());
+				List<String> result = groupClient.listMembers(groupname, token, gSharedKey.getEncoded(), gHmacKey);
 				if(result != null){
 					System.out.println("number of members: " + result.size());
 					for(int i = 0; i < result.size(); i++){
@@ -354,7 +358,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.addUserToGroup(username, groupname, token, gSharedKey.getEncoded());
+				boolean result = groupClient.addUserToGroup(username, groupname, token, gSharedKey.getEncoded(), gHmacKey);
 				if(result){
 					System.out.println("success");
 				}
@@ -376,7 +380,7 @@ public class RunGroupClient{
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				boolean result = groupClient.deleteUserFromGroup(username, groupname, token, gSharedKey.getEncoded());
+				boolean result = groupClient.deleteUserFromGroup(username, groupname, token, gSharedKey.getEncoded(), gHmacKey);
 				if(result){
 					System.out.println("success");
 				}
@@ -435,18 +439,20 @@ public class RunGroupClient{
 									KeyGenerator kgen = KeyGenerator.getInstance("AES", "BC");
 									kgen.init(128);
 									fSharedKey = kgen.generateKey();
+									fHmacKey = Crypt.generateHMacKey();
 									Random r = new Random();
 									int challenge = r.nextInt();
 									byte[] fByte = fSharedKey.getEncoded();
 									byte[] cByte = intToByteArray(challenge);
 									
-									byte[] merge = new byte[cByte.length + fByte.length];
+									byte[] merge = new byte[cByte.length + fByte.length +fHmacKey.length];
 									System.arraycopy(fByte,0,merge,0,fByte.length);
 									System.arraycopy(cByte,0,merge,fByte.length,cByte.length);
+									System.arraycopy(fHmacKey,0,merge,fByte.length + cByte.length,fHmacKey.length);
 									
 									byte[] encryptedMerge = RSAEncrypt(merge, fileServerKey);
 									//byte[] rChallenge = fileClient.challenge(encryptedMerge, 128/8);
-									ArrayList<Object> arr = fileClient.challenge(encryptedMerge, 128/8);
+									ArrayList<Object> arr = fileClient.challenge(encryptedMerge, 128/8, fHmacKey.length);
 									byte[] rChallenge = (byte[])arr.get(0);
 									String serverName = (String)arr.get(1);
 									
@@ -500,7 +506,7 @@ public class RunGroupClient{
 				}
 				else
 				{
-					List<String> filelist = fileClient.listFiles(token, fSharedKey.getEncoded());
+					List<String> filelist = fileClient.listFiles(token, fSharedKey.getEncoded(), fHmacKey);
 					for(String filename : filelist)
 					{
 						System.out.println(filename);
@@ -531,7 +537,7 @@ public class RunGroupClient{
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					boolean result = fileClient.upload(sourceFile, destFile, group, token, fSharedKey.getEncoded(), versionKeys.get(group));
+					boolean result = fileClient.upload(sourceFile, destFile, group, token, fSharedKey.getEncoded(), versionKeys.get(group), fHmacKey);
 					if(result){
 						System.out.println("Upload Success");
 					}
@@ -561,7 +567,7 @@ public class RunGroupClient{
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					boolean result = fileClient.download(sourceFile, destFile, token, fSharedKey.getEncoded(), versionKeys);
+					boolean result = fileClient.download(sourceFile, destFile, token, fSharedKey.getEncoded(), versionKeys, fHmacKey);
 					if(result){
 						System.out.println("Download Success");
 					}
@@ -587,7 +593,7 @@ public class RunGroupClient{
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					boolean result = fileClient.delete(filename, token, fSharedKey.getEncoded());
+					boolean result = fileClient.delete(filename, token, fSharedKey.getEncoded(), fHmacKey);
 					if(result){
 						System.out.println("Delete Success");
 					}

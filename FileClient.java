@@ -78,10 +78,11 @@ public class FileClient extends Client implements FileClientInterface {
 		}
 	}
 	
-	public ArrayList<Object> challenge(byte[] challenge, int keySize){
+	public ArrayList<Object> challenge(byte[] challenge, int keySize, int hmackeysize){
 		Envelope env = new Envelope("CHALLENGE");
 	    env.addObject(challenge);
 	    env.addObject(keySize);
+	    env.addObject(hmackeysize);
 	    env.setNumber(outCounter++);
 	    try {
 			output.writeObject(env);
@@ -102,7 +103,7 @@ public class FileClient extends Client implements FileClientInterface {
 		return null;
 	}
 	
-	public boolean delete(String filename, UserToken token, byte[] sKey) {
+	public boolean delete(String filename, UserToken token, byte[] sKey, byte[] hmackey) {
 		String remotePath;
 		if (filename.charAt(0)=='/') {
 			remotePath = filename.substring(1);
@@ -115,10 +116,10 @@ public class FileClient extends Client implements FileClientInterface {
 	    env.addObject(token);
 	    env.setNumber(outCounter++);
 	    try {
-	    	Envelope message = AESEncrypt(env, sKey);
+	    	Envelope message = Crypt.AESEncrypt(env, sKey, hmackey);
 			output.writeObject(message);
 		    env = (Envelope)input.readObject();
-		    Envelope mess = AESDecrypt(env, sKey);
+		    Envelope mess = Crypt.AESDecrypt(env, sKey, hmackey);
 		    if(mess.getNumber() != inCounter++){
 				 System.out.println("message order incorrect.\nConnection terminated.");
 				 System.exit(1);
@@ -139,7 +140,7 @@ public class FileClient extends Client implements FileClientInterface {
 		return true;
 	}
 
-	public boolean download(String sourceFile, String destFile, UserToken token, byte[] sKey, Hashtable<String, ArrayList<byte[]>> versions) {
+	public boolean download(String sourceFile, String destFile, UserToken token, byte[] sKey, Hashtable<String, ArrayList<byte[]>> versions, byte[] hmackey) {
 				if (sourceFile.charAt(0)=='/') {
 					sourceFile = sourceFile.substring(1);
 				}
@@ -167,11 +168,11 @@ public class FileClient extends Client implements FileClientInterface {
 					    env.addObject(token);
 					    env.addObject(v);
 					    env.setNumber(outCounter++);
-					    Envelope message = AESEncrypt(env, sKey);
+					    Envelope message = Crypt.AESEncrypt(env, sKey, hmackey);
 					    output.writeObject(message); 
 					
 					    Envelope mess = (Envelope)input.readObject();
-					    env = AESDecrypt(mess, sKey);
+					    env = Crypt.AESDecrypt(mess, sKey, hmackey);
 					    if(env.getNumber() != inCounter++){
 							 System.out.println("message order incorrect.\nConnection terminated.");
 							 System.exit(1);
@@ -195,10 +196,10 @@ public class FileClient extends Client implements FileClientInterface {
 							System.out.printf(".");
 							env = new Envelope("DOWNLOADF"); //Success
 							env.setNumber(outCounter++);
-							message = AESEncrypt(env, sKey);
+							message = Crypt.AESEncrypt(env, sKey, hmackey);
 							output.writeObject(message);
 							mess = (Envelope)input.readObject();
-							env = AESDecrypt(mess, sKey);
+							env = Crypt.AESDecrypt(mess, sKey, hmackey);
 							if(env.getNumber() != inCounter++){
 								System.out.println("message order incorrect.\nConnection terminated.");
 								System.exit(1);
@@ -211,7 +212,7 @@ public class FileClient extends Client implements FileClientInterface {
 								System.out.printf("\nTransfer successful file %s\n", sourceFile);
 								env = new Envelope("OK"); //Success
 								env.setNumber(outCounter++);
-								message = AESEncrypt(env, sKey);
+								message = Crypt.AESEncrypt(env, sKey, hmackey);
 								output.writeObject(message);
 								//TODO  - only write, no read follow by, counter will off sync
 						}
@@ -242,7 +243,7 @@ public class FileClient extends Client implements FileClientInterface {
 	}
 
 	@SuppressWarnings("unchecked")
-	public List<String> listFiles(UserToken token, byte[] sKey) {
+	public List<String> listFiles(UserToken token, byte[] sKey, byte[] hmackey) {
 		 try
 		 {
 			 Envelope message = null, e = null;
@@ -250,11 +251,11 @@ public class FileClient extends Client implements FileClientInterface {
 			 message = new Envelope("LFILES");
 			 message.addObject(token); //Add requester's token
 			 message.setNumber(outCounter++);
-			 Envelope m = AESEncrypt(message, sKey);
+			 Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 			 output.writeObject(m); 
 			 
 			 e = (Envelope)input.readObject();
-			 Envelope env = AESDecrypt(e, sKey);
+			 Envelope env = Crypt.AESDecrypt(e, sKey, hmackey);
 			 if(env.getNumber() != inCounter++){
 				 System.out.println("message order incorrect.\nConnection terminated.");
 				 System.exit(1);
@@ -277,7 +278,7 @@ public class FileClient extends Client implements FileClientInterface {
 	}
 
 	public boolean upload(String sourceFile, String destFile, String group,
-			UserToken token, byte[] sKey, ArrayList<byte[]> versionKeys) {
+			UserToken token, byte[] sKey, ArrayList<byte[]> versionKeys, byte[] hmackey) {
 			
 		if (destFile.charAt(0)!='/') {
 			 destFile = "/" + destFile;
@@ -298,13 +299,13 @@ public class FileClient extends Client implements FileClientInterface {
 			message.addObject(token); //Add requester's token
 			message.addObject(versionKeys.size() - 1);
 			message.setNumber(outCounter++);
-			Envelope m = AESEncrypt(message, sKey);
+			Envelope m = Crypt.AESEncrypt(message, sKey, hmackey);
 			output.writeObject(m);
 			
 			FileInputStream fis = new FileInputStream(sourceFile);
 
 			Envelope mess = (Envelope)input.readObject();
-			env = AESDecrypt(mess, sKey);
+			env = Crypt.AESDecrypt(mess, sKey, hmackey);
 			if(env.getNumber() != inCounter++){
 				System.out.println("message order incorrect.\nConnection terminated.");
 				System.exit(1);
@@ -347,12 +348,12 @@ public class FileClient extends Client implements FileClientInterface {
 				message.addObject(new Integer(buf.length));
 				//message.addObject(new Integer(n));
 				message.setNumber(outCounter++);
-				m = AESEncrypt(message, sKey);
+				m = Crypt.AESEncrypt(message, sKey, hmackey);
 				output.writeObject(m);
 
 
 				mess = (Envelope)input.readObject();
-				env = AESDecrypt(mess, sKey);
+				env = Crypt.AESDecrypt(mess, sKey, hmackey);
 				if(env.getNumber() != inCounter++){
 					System.out.println("message order incorrect.\nConnection terminated.");
 					System.exit(1);
@@ -366,11 +367,11 @@ public class FileClient extends Client implements FileClientInterface {
 
 				message = new Envelope("EOF");
 				message.setNumber(outCounter++);
-				m = AESEncrypt(message, sKey);
+				m = Crypt.AESEncrypt(message, sKey, hmackey);
 				output.writeObject(m);
 
 				mess = (Envelope)input.readObject();
-				env = AESDecrypt(mess, sKey);
+				env = Crypt.AESDecrypt(mess, sKey, hmackey);
 				if(env.getNumber() != inCounter++){
 					System.out.println("message order incorrect.\nConnection terminated.");
 					System.exit(1);
