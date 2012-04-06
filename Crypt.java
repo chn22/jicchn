@@ -23,6 +23,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 public class Crypt {
 	//Generate AES Key
 	public static byte[] generateAESKey(int keySize){
+		System.out.println("Generating 128-bit AES key");
 		Security.addProvider(new BouncyCastleProvider());
 		byte[] skey = null;
 		try{
@@ -37,6 +38,7 @@ public class Crypt {
 	}
 	
 	public static byte[] generateHMacKey(){
+		System.out.println("Generating HmacKey using SHA-1");
 		Security.addProvider(new BouncyCastleProvider());
 		byte[] skey = null;
 		try{
@@ -52,6 +54,7 @@ public class Crypt {
 	
 	//Get public key fingerprint
 	public static String getFingerprint(PublicKey key){
+		System.out.println("Getting public key fingerprint");
 		String fingerprint = null;
 		Security.addProvider(new BouncyCastleProvider());
 		try{
@@ -74,6 +77,7 @@ public class Crypt {
 	
 	//Encrypt using RSA private key
 	public static byte[] RSAEncrypt(byte[] bytes, PrivateKey key){
+		System.out.println("RSA Encrypting using private Key...");
 		Security.addProvider(new BouncyCastleProvider());
 		byte[] encrypted = null;
 		try{
@@ -88,6 +92,7 @@ public class Crypt {
 
 	//Encrypt using RSA public key
 	public static byte[] RSAEncrypt(byte[] bytes, PublicKey key){
+		System.out.println("RSA Encrypting using public Key...");
 		Security.addProvider(new BouncyCastleProvider());
 		byte[] encrypted = null;
 		try{
@@ -102,6 +107,7 @@ public class Crypt {
 
 	//Decrypt using RSA private key
 	public static byte[] RSADecrypt(byte[] bytes, PrivateKey key){
+		System.out.println("RSA Decrypting using private Key...");
 		Security.addProvider(new BouncyCastleProvider());
 		byte[] decrypt = null; 
 		try{
@@ -116,6 +122,7 @@ public class Crypt {
 
 	//Decrypt using RSA public key
 	public static byte[] RSADecrypt(byte[] bytes, PublicKey key){
+		System.out.println("RSA Decrypting using public Key...");
 		Security.addProvider(new BouncyCastleProvider());
 		byte[] decrypt = null; 
 		try{
@@ -156,6 +163,8 @@ public class Crypt {
 			envelope.addObject(cipher.getIV());
 			byte[] encrypt = cipher.doFinal(bytes);
 			envelope.addObject(encrypt);
+			System.out.println("AES Encrypting.....");
+			System.out.println("Creating Hmac of encryption");
 			envelope.addObject(getHmac(encrypt, hmackey));
 		} catch(Exception e){
 			System.out.println(e);
@@ -202,10 +211,12 @@ public class Crypt {
 		byte[] hash1 = Crypt.getHmac(encrypted, hmackey);
 		byte[] hash2 = (byte[]) envelope.getObjContents().get(2);
 		boolean compare = Arrays.equals(hash1, hash2);
+		System.out.println("Checking Hmac");
 		if(!compare){
 			System.out.println("Hmac is wrong - message has been altered");
 			System.exit(1);
 		}
+		System.out.println("Decrypting using AES");
 		Security.addProvider(new BouncyCastleProvider());
 		Envelope en = null;
 		byte[] decrypt = null; 
