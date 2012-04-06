@@ -177,18 +177,32 @@ public class FileClient extends Client implements FileClientInterface {
 							 System.exit(1);
 						}
 						while (env.getMessage().compareTo("CHUNK")==0) { 
-								fos.write((byte[])env.getObjContents().get(0), 0, (Integer)env.getObjContents().get(1));
-								System.out.printf(".");
-								env = new Envelope("DOWNLOADF"); //Success
-								env.setNumber(outCounter++);
-								message = AESEncrypt(env, sKey);
-								output.writeObject(message);
-								mess = (Envelope)input.readObject();
-								env = AESDecrypt(mess, sKey);
-								if(env.getNumber() != inCounter++){
-									 System.out.println("message order incorrect.\nConnection terminated.");
-									 System.exit(1);
-								 }
+							
+							String groupName = (String)env.getObjContents().get(2);
+							System.out.println("group name" + groupName);
+							int keyNumber = (Integer)env.getObjContents().get(3);
+							System.out.println("key number" + keyNumber);
+							byte[] key = versions.get(groupName).get(keyNumber);
+							if(key == null)
+								System.out.println("key is null");
+							byte[] buf = Crypt.AESDecrypt((byte[])env.getObjContents().get(0), key);
+							if(buf == null){
+								System.out.println("buf is null");
+							}
+							
+							fos.write(buf, 0, buf.length);
+							//fos.write((byte[])env.getObjContents().get(0), 0, (Integer)env.getObjContents().get(1));
+							System.out.printf(".");
+							env = new Envelope("DOWNLOADF"); //Success
+							env.setNumber(outCounter++);
+							message = AESEncrypt(env, sKey);
+							output.writeObject(message);
+							mess = (Envelope)input.readObject();
+							env = AESDecrypt(mess, sKey);
+							if(env.getNumber() != inCounter++){
+								System.out.println("message order incorrect.\nConnection terminated.");
+								System.exit(1);
+							}
 						}										
 						fos.close();
 						
@@ -282,7 +296,7 @@ public class FileClient extends Client implements FileClientInterface {
 			message.addObject(destFile);
 			message.addObject(group);
 			message.addObject(token); //Add requester's token
-			message.addObject(versionKeys.size());
+			message.addObject(versionKeys.size() - 1);
 			message.setNumber(outCounter++);
 			Envelope m = AESEncrypt(message, sKey);
 			output.writeObject(m);
@@ -322,10 +336,16 @@ public class FileClient extends Client implements FileClientInterface {
 					System.out.println("Read error");
 					return false;
 				}
-				//byte[] key = versionKeys.get(versionKeys.size());
-				//buf = Crypt.AESEncrypt(buf, key);
+				
+				byte[] key = versionKeys.get(versionKeys.size() - 1);
+				
+				System.out.println(buf.length);
+				buf = Crypt.AESEncrypt(buf, key);
+				System.out.println(buf.length);
+				
 				message.addObject(buf);
-				message.addObject(new Integer(n));
+				message.addObject(new Integer(buf.length));
+				//message.addObject(new Integer(n));
 				message.setNumber(outCounter++);
 				m = AESEncrypt(message, sKey);
 				output.writeObject(m);
