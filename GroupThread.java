@@ -553,7 +553,7 @@ public class GroupThread extends Thread
 		String requester = yourToken.getSubject();
 		
 		//Check if requester exists
-		if(my_gs.userList.checkUser(requester))
+		if(my_gs.userList.checkUser(requester) && (requester.equals(USERNAME)))
 		{
 			//Get the user's groups
 			ArrayList<String> temp = my_gs.userList.getUserGroups(requester);
@@ -579,6 +579,9 @@ public class GroupThread extends Thread
 		}
 		else
 		{
+			if(requester.equals(USERNAME)){
+				System.out.println("Requester use different Token!-----------------------");
+			} else
 			System.out.println("Requester does not exist!-----------------------");
 			return false; //requester does not exist
 		}
@@ -590,7 +593,7 @@ public class GroupThread extends Thread
 		String requester = yourToken.getSubject();
 		
 		//Does requester exist?
-		if(my_gs.userList.checkUser(requester))
+		if(my_gs.userList.checkUser(requester) && (requester.equals(USERNAME)))
 		{
 			ArrayList<String> temp = my_gs.userList.getUserGroups(requester);
 			//requester needs to be an administer
@@ -652,6 +655,9 @@ public class GroupThread extends Thread
 		}
 		else
 		{
+			if(requester.equals(USERNAME)){
+				System.out.println("Requester use different Token!-----------------------");
+			} else
 			System.out.println("Requester does not exist!-----------------------");
 			return false; //requester does not exist
 		}
@@ -663,7 +669,7 @@ public class GroupThread extends Thread
 		String requester = yourToken.getSubject();
 		
 		//Does requester exist?
-		if(my_gs.userList.checkUser(requester))
+		if(my_gs.userList.checkUser(requester) && (requester.equals(USERNAME)))
 		{
 			
 			//group not yet exists
@@ -684,6 +690,9 @@ public class GroupThread extends Thread
 		}
 		else
 		{
+			if(requester.equals(USERNAME)){
+				System.out.println("Requester use different Token!-----------------------");
+			} else
 			System.out.println("Requester does not exist!-----------------------");
 			return false;
 		}
@@ -695,7 +704,7 @@ public class GroupThread extends Thread
 		String requester = yourToken.getSubject();
 		
 		//Does requester exist?
-		if(my_gs.userList.checkUser(requester))
+		if(my_gs.userList.checkUser(requester) && (requester.equals(USERNAME)))
 		{
 			//Does the group exist?
 			if(my_gs.groupList.checkGroup(groupName))
@@ -723,6 +732,9 @@ public class GroupThread extends Thread
 		}
 		else
 		{
+			if(requester.equals(USERNAME)){
+				System.out.println("Requester use different Token!-----------------------");
+			} else
 			System.out.println("Requester does not exist!-----------------------");
 			return false;
 		}
@@ -733,7 +745,7 @@ public class GroupThread extends Thread
 		String requester = yourToken.getSubject();
 		
 		//Does requester exist?
-		if(my_gs.userList.checkUser(requester))
+		if(my_gs.userList.checkUser(requester) && (requester.equals(USERNAME)))
 		{
 			//Does the group exist?
 			if(my_gs.groupList.checkGroup(groupName))
@@ -758,6 +770,9 @@ public class GroupThread extends Thread
 		}
 		else
 		{
+			if(requester.equals(USERNAME)){
+				System.out.println("Requester use different Token!-----------------------");
+			} else
 			System.out.println("Requester does not exist!---------------------");
 			return null;
 		}
@@ -767,7 +782,7 @@ public class GroupThread extends Thread
 		String requester = yourToken.getSubject();
 		
 		//Does requester exist?
-		if(my_gs.userList.checkUser(requester))
+		if(my_gs.userList.checkUser(requester) && (requester.equals(USERNAME)))
 		{
 			//Does the group exist?
 			if(my_gs.groupList.checkGroup(groupName))
@@ -819,6 +834,9 @@ public class GroupThread extends Thread
 		}
 		else
 		{
+			if(requester != USERNAME){
+				System.out.println("Requester use different Token!-----------------------");
+			} else
 			System.out.println("Requester does not exist!-------------------------------");
 			return false;
 		}
@@ -828,7 +846,7 @@ public class GroupThread extends Thread
 		String requester = yourToken.getSubject();
 		
 		//Does requester exist?
-		if(my_gs.userList.checkUser(requester))
+		if(my_gs.userList.checkUser(requester) && (requester.equals(USERNAME)))
 		{
 			//Does the group exist?
 			if(my_gs.groupList.checkGroup(groupName))
@@ -879,6 +897,9 @@ public class GroupThread extends Thread
 		}
 		else
 		{
+			if(requester.equals(USERNAME)){
+				System.out.println("Requester use different Token!-----------------------");
+			} else
 			System.out.println("Requester does not exist!-----------------");
 			return false;
 		}
